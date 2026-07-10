@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
+    />
+    <title>ScheduleBot Dashboard</title>
+    <link rel="stylesheet" href="/public/styles.css" />
+    <script>
+      (function () {
+        try {
+          var storedTheme = window.localStorage.getItem('schedulebot-theme');
+          document.documentElement.setAttribute('data-theme', storedTheme === 'light' ? 'light' : 'dark');
+        } catch (error) {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        }
+      })();
+
+      (function () {
+        if (window.location.hash) {
+          document.documentElement.classList.add('has-route-hash');
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <div class="app" id="top">
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+          <span class="brand-mark">S</span>
+          <span class="brand-name">ScheduleBot</span>
+        </div>
+
+        <div class="sidebar-body">
+          <p class="nav-group-label">Menu</p>
+          <nav class="sidebar-nav">
+            <a class="nav-item active" href="#account">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="8" r="4"></circle>
+                <path d="M4 21c0-4 3.5-6 8-6s8 2 8 6"></path>
+              </svg>
+              <span>Account</span>
+            </a>
+            <a class="nav-item" href="#schedule">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+                <path d="M3 10h18M8 2v4M16 2v4"></path>
+              </svg>
+              <span>Schedule</span>
+            </a>
+            <a class="nav-item" href="#send-message">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M22 2L11 13"></path>
+                <path d="M22 2L15 22 11 13 2 9 22 2z"></path>
+              </svg>
+              <span>Send Message</span>
+            </a>
+            <a class="nav-item" href="#custom-commands">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M4 17l6-6-6-6"></path>
+                <path d="M12 19h8"></path>
+              </svg>
+              <span>Custom Command</span>
+            </a>
+            <a class="nav-item" href="#deleted-messages">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+                <path d="M10 11v6M14 11v6"></path>
+                <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
+              </svg>
+              <span>Deleted Messages</span>
+            </a>
+          </nav>
+        </div>
+
+        <div class="sidebar-footer">
+          <span class="status-indicator <%= waState.ready ? 'is-on' : 'is-off' %>"></span>
+          <span class="sidebar-footer-text">WhatsApp <%= waState.ready ? 'connected' : 'offline' %></span>
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="top-nav">
+          <div class="top-nav-inner">
+            <button class="icon-btn" id="sidebarMenuBtn" type="button" aria-label="Open menu">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="3" y="4" width="18" height="16" rx="2"></rect>
+                <path d="M9.5 4v16"></path>
+              </svg>
+            </button>
+            <div class="top-nav-title-wrap">
+              <nav class="top-nav-breadcrumb" aria-label="Breadcrumb">
+                <span class="crumb" id="breadcrumbRoot">Dashboard</span>
+                <span class="crumb-sep">/</span>
+                <span class="crumb" id="breadcrumbPage">Account</span>
+                <span class="crumb-sep" id="breadcrumbSectionSep" hidden>/</span>
+                <span class="crumb is-current" id="breadcrumbSection" hidden></span>
+              </nav>
+            </div>
+            <button class="icon-btn theme-toggle-btn" id="themeToggleBtn" type="button" aria-label="Toggle light/dark mode">
+              <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="4"></circle>
+                <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path>
+              </svg>
+              <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+              </svg>
+            </button>
+          </div>
+        </header>
+
+        <div class="container">
+          <section class="page" data-page="account" id="account">
+            <div class="account-layout">
+              <aside class="card account-sidebar-card">
+                <div class="card-content account-sidebar-content">
+                  <div class="account-profile-hero">
+                    <div class="account-avatar" id="accountProfileAvatar" aria-hidden="true">
+                      <img id="accountProfileAvatarImage" alt="WhatsApp profile avatar" hidden />
+                      <span id="accountProfileAvatarFallback">SB</span>
+                    </div>
+                    <div>
+                      <p class="account-profile-name" id="accountProfileDisplayName">ScheduleBot Admin</p>
+                      <p class="account-profile-status" id="accountProfileDisplayStatus">Manage your bot profile and WhatsApp settings.</p>
+                    </div>
+                  </div>
+
+                  <div class="status-row account-status-row">
+                    <span class="badge <%= waState.ready ? 'badge-success' : 'badge-warning' %>" id="wa-status">
+                      <%= waState.status %>
+                    </span>
+                  </div>
+
+                  <form id="accountProfileForm" class="account-mini-form" autocomplete="off">
+                    <div class="field">
+                      <label for="accountProfileName">Display Name</label>
+                      <input id="accountProfileName" type="text" maxlength="60" placeholder="ScheduleBot Admin" />
+                    </div>
+                    <div class="field">
+                      <label for="accountProfileAbout">About</label>
+                      <input id="accountProfileAbout" type="text" maxlength="120" placeholder="Always online for your business" />
+                    </div>
+                    <div class="field">
+                      <label for="accountProfileEmail">Email</label>
+                      <input id="accountProfileEmail" type="email" maxlength="120" placeholder="admin@company.com" />
+                    </div>
+                    <button type="submit" class="btn btn-success btn-block" id="accountProfileSaveBtn">Save Profile</button>
+                    <p id="accountProfileFeedback" class="feedback"></p>
+                  </form>
+
+                  <nav class="account-settings-nav" aria-label="Account settings">
+                    <button type="button" class="account-settings-tab active" data-account-tab="profile" data-account-label="Profile">Profile</button>
+                    <button type="button" class="account-settings-tab" data-account-tab="account" data-account-label="Account">Account</button>
+                    <button type="button" class="account-settings-tab" data-account-tab="privacy" data-account-label="Privacy">Privacy</button>
+                    <button type="button" class="account-settings-tab" data-account-tab="chats" data-account-label="Chats">Chats</button>
+                    <button type="button" class="account-settings-tab" data-account-tab="notifications" data-account-label="Notifications">Notifications</button>
+                    <button type="button" class="account-settings-tab" data-account-tab="linked-devices" data-account-label="Linked Devices">Linked Devices</button>
+                    <button type="button" class="account-settings-tab" data-account-tab="storage" data-account-label="Storage">Storage & Help</button>
+                  </nav>
+                </div>
+              </aside>
+
+              <div class="account-settings-content">
+                <article class="card account-settings-panel" data-account-panel="profile">
+                  <div class="card-header">
+                    <h2 class="card-title">Profile</h2>
+                    <p class="card-description">Set your profile details similar to WhatsApp Edit Profile.</p>
+                  </div>
+                  <div class="card-content">
+                    <div class="account-meta-grid">
+                      <p class="account-meta-item">
+                        <span class="account-meta-label">Name</span>
+                        <span class="account-meta-value" id="accountProfilePreviewName">ScheduleBot Admin</span>
+                      </p>
+                      <p class="account-meta-item">
+                        <span class="account-meta-label">About</span>
+                        <span class="account-meta-value" id="accountProfilePreviewAbout">Always online for your business</span>
+                      </p>
+                      <p class="account-meta-item">
+                        <span class="account-meta-label">Email</span>
+                        <span class="account-meta-value" id="accountProfilePreviewEmail">-</span>
+                      </p>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="card account-settings-panel" data-account-panel="account" hidden>
+                  <div class="card-header">
+                    <h2 class="card-title">Account</h2>
+                    <p class="card-description">Security and account access preferences.</p>
+                  </div>
+                  <div class="card-content">
+                    <div class="field field-narrow">
+                      <label for="timezoneSettingSelect">Timezone</label>
+                      <select id="timezoneSettingSelect">
+                        <option value="Asia/Kuala_Lumpur">Asia/Kuala_Lumpur (GMT+8)</option>
+                        <option value="Asia/Jakarta">Asia/Jakarta (GMT+7)</option>
+                        <option value="Asia/Singapore">Asia/Singapore (GMT+8)</option>
+                        <option value="Asia/Bangkok">Asia/Bangkok (GMT+7)</option>
+                        <option value="Asia/Manila">Asia/Manila (GMT+8)</option>
+                        <option value="Asia/Tokyo">Asia/Tokyo (GMT+9)</option>
+                        <option value="Asia/Seoul">Asia/Seoul (GMT+9)</option>
+                        <option value="Asia/Kolkata">Asia/Kolkata (GMT+5:30)</option>
+                        <option value="Australia/Perth">Australia/Perth (GMT+8)</option>
+                        <option value="Europe/London">Europe/London</option>
+                        <option value="Europe/Paris">Europe/Paris</option>
+                        <option value="America/New_York">America/New_York</option>
+                        <option value="America/Los_Angeles">America/Los_Angeles</option>
+                        <option value="UTC">UTC</option>
+                      </select>
+                      <p class="hint" id="timezoneSettingHint">Used for schedule create/view time conversion.</p>
+                    </div>
+                    <button type="button" class="btn btn-success btn-sm" id="timezoneSettingSaveBtn">Save Timezone</button>
+                    <p id="timezoneSettingFeedback" class="feedback"></p>
+
+                    <div class="account-access-control-block">
+                      <h3 class="account-access-title">Access and control</h3>
+                      <p class="account-access-description">Set owner number used as primary admin contact.</p>
+
+                      <div class="field field-narrow">
+                        <label for="ownerNumberInput">Owner number</label>
+                        <input id="ownerNumberInput" type="tel" inputmode="numeric" pattern="[+]?[0-9]*" placeholder="6012xxxxxxx" />
+                        <p class="hint">Enter with country code, example: 6012xxxxxxx</p>
+                      </div>
+
+                      <div class="field field-narrow">
+                        <label for="commandModeSelect">Command Mode</label>
+                        <select id="commandModeSelect">
+                          <option value="public">Public - Anyone can use commands</option>
+                          <option value="private">Private - Owner only</option>
+                        </select>
+                        <p class="hint">Public allows all users, Private restricts to owner number only.</p>
+                      </div>
+
+                      <button type="button" class="btn btn-success btn-sm" id="ownerNumberSaveBtn">Save Access Control</button>
+                      <p id="ownerNumberFeedback" class="feedback"></p>
+                    </div>
+
+                    <div class="account-option-list">
+                      <p class="account-option-row"><span>Owner number</span><span class="muted" id="ownerNumberDisplay">-</span></p>
+                      <p class="account-option-row"><span>Command mode</span><span class="muted" id="commandModeDisplay">Public</span></p>
+                      <p class="account-option-row"><span>Two-step verification</span><span class="badge badge-outline">Enabled</span></p>
+                      <p class="account-option-row"><span>Change phone number</span><span class="muted">Use WhatsApp app</span></p>
+                      <p class="account-option-row"><span>Security notifications</span><span class="badge badge-outline">On</span></p>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="card account-settings-panel" data-account-panel="privacy" hidden>
+                  <div class="card-header">
+                    <h2 class="card-title">Privacy</h2>
+                    <p class="card-description">Control who can see your profile and activity.</p>
+                  </div>
+                  <div class="card-content">
+                    <div class="account-option-list">
+                      <p class="account-option-row"><span>Last seen and online</span><span class="muted">My contacts</span></p>
+                      <p class="account-option-row"><span>Profile photo</span><span class="muted">Everyone</span></p>
+                      <p class="account-option-row"><span>About</span><span class="muted">My contacts</span></p>
+                      <p class="account-option-row"><span>Groups</span><span class="muted">My contacts except...</span></p>
+                      <p class="account-option-row"><span>Read receipts</span><span class="badge badge-outline">On</span></p>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="card account-settings-panel" data-account-panel="chats" hidden>
+                  <div class="card-header">
+                    <h2 class="card-title">Chats</h2>
+                    <p class="card-description">Set chat behavior and appearance.</p>
+                  </div>
+                  <div class="card-content">
+                    <div class="account-option-list">
+                      <div class="account-option-row account-toggle-row">
+                        <div class="account-toggle-copy">
+                          <span>Bot response chat</span>
+                          <span class="muted">Auto response for personal chats.</span>
+                        </div>
+                        <label class="switch" for="toggleBotResponsePersonal">
+                          <input type="checkbox" id="toggleBotResponsePersonal" <%= chatResponseSettings.personalEnabled ? 'checked' : '' %> />
+                          <span class="switch-slider" aria-hidden="true"></span>
+                          <span class="switch-label" id="toggleBotResponsePersonalLabel"><%= chatResponseSettings.personalEnabled ? 'Enabled' : 'Disabled' %></span>
+                        </label>
+                      </div>
+                      <div class="account-option-row account-toggle-row">
+                        <div class="account-toggle-copy">
+                          <span>Bot response group</span>
+                          <span class="muted">Auto response for WhatsApp groups.</span>
+                        </div>
+                        <label class="switch" for="toggleBotResponseGroup">
+                          <input type="checkbox" id="toggleBotResponseGroup" <%= chatResponseSettings.groupEnabled ? 'checked' : '' %> />
+                          <span class="switch-slider" aria-hidden="true"></span>
+                          <span class="switch-label" id="toggleBotResponseGroupLabel"><%= chatResponseSettings.groupEnabled ? 'Enabled' : 'Disabled' %></span>
+                        </label>
+                      </div>
+                      <p class="account-option-row"><span>Theme</span><span class="muted">Follow dashboard theme</span></p>
+                      <p class="account-option-row"><span>Enter is send</span><span class="badge badge-outline">Off</span></p>
+                      <p class="account-option-row"><span>Media visibility</span><span class="badge badge-outline">On</span></p>
+                      <p class="account-option-row"><span>Font size</span><span class="muted">Medium</span></p>
+                    </div>
+                    <p id="botResponseSettingsFeedback" class="feedback"></p>
+                  </div>
+                </article>
+
+                <article class="card account-settings-panel" data-account-panel="notifications" hidden>
+                  <div class="card-header">
+                    <h2 class="card-title">Notifications</h2>
+                    <p class="card-description">Tune alerts for message, group, and call events.</p>
+                  </div>
+                  <div class="card-content">
+                    <div class="account-option-list">
+                      <p class="account-option-row"><span>Conversation tones</span><span class="badge badge-outline">On</span></p>
+                      <p class="account-option-row"><span>High priority notifications</span><span class="badge badge-outline">On</span></p>
+                      <p class="account-option-row"><span>Reaction notifications</span><span class="badge badge-outline">On</span></p>
+                      <p class="account-option-row"><span>Group notifications</span><span class="muted">Only mentions</span></p>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="card account-settings-panel" data-account-panel="linked-devices" hidden>
+                  <div class="card-header">
+                    <h2 class="card-title">Linked Devices</h2>
+                    <p class="card-description">Connection state, QR pairing, and pairing code login.</p>
+                  </div>
+                  <div class="card-content linked-devices-shell">
+                    <div class="linked-devices-headline">
+                      <p class="linked-devices-kicker">Device Pairing Center</p>
+                      <p class="linked-devices-note">Choose how you want to connect this dashboard to your WhatsApp account.</p>
+                    </div>
+
+                    <div class="method-tabs linked-method-tabs">
+                      <button type="button" class="method-tab active" id="methodTabQr" data-method="qr">QR Code</button>
+                      <button type="button" class="method-tab" id="methodTabPhone" data-method="phone" <%= waState.ready ? 'disabled' : '' %>>Phone Number</button>
+                    </div>
+
+                    <div id="qr-method" class="method-panel linked-method-panel">
+                      <div id="wa-connected-wrap" class="connected-wrap linked-connected-wrap" <%= waState.ready ? '' : 'hidden' %>>
+                        <span class="connected-icon" aria-hidden="true">✓</span>
+                        <p class="connected-title">WhatsApp connected</p>
+                        <p class="connected-subtitle">Session is active. QR code is not needed right now.</p>
+                        <div class="connected-details" id="waConnectedDetails" <%= waState.ready ? '' : 'hidden' %>>
+                          <p class="connected-detail-row">
+                            <span class="connected-detail-label">Name</span>
+                            <span class="connected-detail-value" id="waConnectedName"><%= waState.connectedAccount?.displayName || '-' %></span>
+                          </p>
+                          <p class="connected-detail-row">
+                            <span class="connected-detail-label">Phone</span>
+                            <span class="connected-detail-value" id="waConnectedPhone"><%= waState.connectedAccount?.phoneNumber || '-' %></span>
+                          </p>
+                          <p class="connected-detail-row">
+                            <span class="connected-detail-label">JID</span>
+                            <span class="connected-detail-value connected-detail-mono" id="waConnectedJid"><%= waState.connectedAccount?.jid || '-' %></span>
+                          </p>
+                        </div>
+                      </div>
+
+                      <div id="wa-qr-wrap" class="qr-wrap linked-qr-wrap" <%= !waState.ready && waState.qrCodeDataUrl ? '' : 'hidden' %>>
+                        <% if (waState.qrCodeDataUrl) { %>
+                        <img src="<%= waState.qrCodeDataUrl %>" alt="QR WhatsApp" class="qr" />
+                        <% } else { %>
+                        <img src="" alt="QR WhatsApp" class="qr" />
+                        <% } %>
+                        <p id="wa-qr-caption" class="qr-caption">Scan this QR code from WhatsApp to connect the bot.</p>
+                        <ol class="qr-instructions">
+                          <li>Open WhatsApp on your phone.</li>
+                          <li>Tap <strong>Settings</strong> &gt; <strong>Linked Devices</strong>.</li>
+                          <li>Tap <strong>Link a Device</strong>.</li>
+                          <li>Scan the QR code above using your phone camera.</li>
+                        </ol>
+                      </div>
+                      <p id="wa-qr-empty" class="muted" <%= !waState.ready && !waState.qrCodeDataUrl ? '' : 'hidden' %>>
+                        QR will appear automatically when re-login is needed.
+                      </p>
+                    </div>
+
+                    <div id="phone-method" class="method-panel linked-method-panel" hidden>
+                      <div class="linked-phone-wrap">
+                        <div class="field">
+                        <label for="pairingPhone">Phone Number</label>
+                        <input id="pairingPhone" type="tel" inputmode="numeric" pattern="[+]?[0-9]*" autocomplete="tel" placeholder="60812xxxxxxx" <%= waState.ready ? 'disabled' : '' %> />
+                        <p class="hint">Enter your WhatsApp number with country code, no + or spaces.</p>
+                        </div>
+                        <button type="button" class="btn btn-primary btn-block" id="requestPairingBtn" <%= waState.ready ? 'disabled' : '' %>>Get Pairing Code</button>
+                        <p id="pairing-feedback" class="feedback"></p>
+
+                        <div id="pairing-code-wrap" class="pairing-code-wrap" hidden>
+                          <p class="muted">Your pairing code:</p>
+                          <p class="pairing-code" id="pairing-code-value"></p>
+                          <p class="hint">Open WhatsApp on your phone &rarr; Linked Devices &rarr; Link with phone number, then enter this code.</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <ul class="tips muted" id="account-target-tips" hidden></ul>
+                  </div>
+                </article>
+
+                <article class="card account-settings-panel" data-account-panel="storage" hidden>
+                  <div class="card-header">
+                    <h2 class="card-title">Storage & Help</h2>
+                    <p class="card-description">Usage summary and quick support shortcuts.</p>
+                  </div>
+                  <div class="card-content">
+                    <div class="account-option-list">
+                      <p class="account-option-row"><span>Media storage usage</span><span class="muted">Managed by server</span></p>
+                      <p class="account-option-row"><span>Auto-clean old logs</span><span class="badge badge-outline">Recommended</span></p>
+                      <p class="account-option-row"><span>Help center</span><a href="#top" class="muted">Open documentation</a></p>
+                    </div>
+                  </div>
+                </article>
+              </div>
+            </div>
+          </section>
+
+          <section class="page" data-page="schedule" id="schedule" hidden>
+            <div class="method-tabs" id="schedule-tabs" role="tablist" aria-label="Schedule tabs">
+              <button type="button" class="method-tab active" id="scheduleTabCreate" data-tab="create" role="tab" aria-controls="schedule-create-panel" aria-selected="true">Create Schedule</button>
+              <button type="button" class="method-tab" id="scheduleTabList" data-tab="list" role="tab" aria-controls="schedule-list-panel" aria-selected="false">Schedule List</button>
+            </div>
+
+            <div class="method-panel" id="schedule-create-panel" role="tabpanel" aria-labelledby="scheduleTabCreate">
+              <article class="card" id="create-schedule">
+                <div class="card-header section-head">
+                  <div>
+                    <h2 class="card-title">Create Schedule</h2>
+                    <p class="card-description">Queue a new WhatsApp message</p>
+                  </div>
+                  <button type="button" class="btn btn-outline btn-sm" id="shareScheduleLinkBtn">Share Link</button>
+                </div>
+                <div class="card-content">
+                  <p id="shareScheduleLinkFeedback" class="feedback"></p>
+                  <form id="schedule-form">
+                    <div class="field">
+                      <label for="targetType">Target Type</label>
+                      <select id="targetType" name="targetType" required>
+                        <option value="group" selected>Group Chat</option>
+                        <option value="personal">Personal Chat</option>
+                      </select>
+                    </div>
+
+                    <div class="field" id="targetValueField">
+                      <label for="targetValue" id="targetValueLabel">Group ID (example: 1203630xxxx@g.us)</label>
+                      <input id="targetValue" name="targetValue" required />
+                      <p class="hint" id="targetHint">You can enter 1203630xxxx only or with @g.us suffix</p>
+                    </div>
+
+                    <div class="group-tools" id="groupTools">
+                      <div class="group-tools-head">
+                        <label for="groupPicker">Select Group From WhatsApp Account</label>
+                        <button type="button" class="btn btn-outline btn-sm" id="refreshGroupsBtn">Refresh Groups</button>
+                      </div>
+                      <select id="groupPicker">
+                        <option value="">Loading group list...</option>
+                      </select>
+                      <p class="hint" id="groupFetchHint">Pick a group to auto-fill the ID.</p>
+                    </div>
+
+                    <div class="group-tools" id="personalChatTools" hidden>
+                      <div class="group-tools-head">
+                        <label for="personalChatPicker">Generate From Current Personal Chats</label>
+                        <button type="button" class="btn btn-outline btn-sm" id="refreshPersonalChatsBtn">Refresh Chats</button>
+                      </div>
+                      <select id="personalChatPicker">
+                        <option value="">Loading personal chat list...</option>
+                      </select>
+                      <p class="hint" id="personalChatFetchHint">Pick a personal chat to auto-fill the destination ID.</p>
+                    </div>
+
+                    <div class="field">
+                      <label for="message">Message</label>
+                      <textarea id="message" name="message" rows="4" required></textarea>
+                    </div>
+
+                    <div class="field field-narrow">
+                      <label for="scheduleAt">Send Time</label>
+                      <input id="scheduleAt" name="scheduleAt" type="datetime-local" required />
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-block">Save Schedule</button>
+                  </form>
+                  <p id="form-feedback" class="feedback"></p>
+                </div>
+              </article>
+            </div>
+
+            <div class="method-panel" id="schedule-list-panel" role="tabpanel" aria-labelledby="scheduleTabList" hidden>
+              <article class="card table-card" id="schedule-list">
+                <div class="card-header section-head">
+                  <div>
+                    <h2 class="card-title">Schedule List</h2>
+                    <p class="card-description">Track every pending, sent, and failed job in one clean table.</p>
+                  </div>
+                </div>
+                <div class="card-content no-pad">
+                  <div class="table-wrap">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>ID</th>
+                          <th>Type</th>
+                          <th>Details</th>
+                          <th>Status</th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <% if (!schedules.length) { %>
+                        <tr>
+                          <td colspan="5" class="muted">No schedules yet</td>
+                        </tr>
+                        <% } %>
+
+                        <% schedules.forEach((item) => { %>
+                        <tr>
+                          <td><%= item.id %></td>
+                          <td>
+                            <span class="badge badge-outline">
+                              <%= item.targetType === 'group' ? 'group' : 'personal' %>
+                            </span>
+                          </td>
+                          <td class="schedule-details-cell">
+                            <div class="schedule-detail-actions">
+                              <button class="btn btn-outline btn-sm btn-view-schedule" data-id="<%= item.id %>">View</button>
+                            </div>
+                          </td>
+                          <td>
+                            <span class="badge badge-<%= item.status %>"><%= item.status %></span>
+                          </td>
+                          <td class="cell-action">
+                            <button class="btn btn-ghost btn-sm btn-delete" data-id="<%= item.id %>">Delete</button>
+                          </td>
+                        </tr>
+                        <% }) %>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <section class="page" data-page="send-message" id="send-message" hidden>
+            <div class="grid two-cols">
+              <article class="card">
+                <div class="card-header">
+                  <h2 class="card-title">Send Message</h2>
+                  <p class="card-description">Send WhatsApp message instantly from dashboard</p>
+                </div>
+                <div class="card-content">
+                  <form id="send-form">
+                    <div class="field">
+                      <label for="sendTargetType">Target Type</label>
+                      <select id="sendTargetType" name="targetType" required>
+                        <option value="group" selected>Group Chat</option>
+                        <option value="personal">Personal Chat</option>
+                      </select>
+                    </div>
+
+                    <div class="field" id="sendTargetValueField">
+                      <label for="sendTargetValue" id="sendTargetValueLabel">Group ID (example: 1203630xxxx@g.us)</label>
+                      <input id="sendTargetValue" name="targetValue" required />
+                      <p class="hint" id="sendTargetHint">You can enter 1203630xxxx only or with @g.us suffix</p>
+                    </div>
+
+                    <div class="group-tools" id="sendGroupTools">
+                      <div class="group-tools-head">
+                        <label for="sendGroupPicker">Select Group From WhatsApp Account</label>
+                        <button type="button" class="btn btn-outline btn-sm" id="sendRefreshGroupsBtn">Refresh Groups</button>
+                      </div>
+                      <select id="sendGroupPicker">
+                        <option value="">Loading group list...</option>
+                      </select>
+                      <p class="hint" id="sendGroupFetchHint">Pick a group to auto-fill the ID.</p>
+                    </div>
+
+                    <div class="group-tools" id="sendPersonalChatTools" hidden>
+                      <div class="group-tools-head">
+                        <label for="sendPersonalChatPicker">Generate From Current Personal Chats</label>
+                        <button type="button" class="btn btn-outline btn-sm" id="sendRefreshPersonalChatsBtn">Refresh Chats</button>
+                      </div>
+                      <select id="sendPersonalChatPicker">
+                        <option value="">Loading personal chat list...</option>
+                      </select>
+                      <p class="hint" id="sendPersonalChatFetchHint">Pick a personal chat to auto-fill the destination ID.</p>
+                    </div>
+
+                    <div class="field">
+                      <label for="sendMessageText">Message</label>
+                      <textarea id="sendMessageText" name="message" rows="4" required></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-block">Send Now</button>
+                  </form>
+                  <p id="send-feedback" class="feedback"></p>
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <section class="page" data-page="custom-commands" id="custom-commands" hidden>
+            <div class="method-tabs" id="command-tabs" role="tablist" aria-label="Custom command tabs">
+              <button type="button" class="method-tab active" id="commandTabCreate" data-tab="create" role="tab" aria-controls="command-create-panel" aria-selected="true">Add Command</button>
+              <button type="button" class="method-tab" id="commandTabList" data-tab="list" role="tab" aria-controls="command-list-panel" aria-selected="false">Command List</button>
+            </div>
+
+            <div class="method-panel" id="command-create-panel" role="tabpanel" aria-labelledby="commandTabCreate">
+              <article class="card">
+                <div class="card-header">
+                  <h2 class="card-title">Add Custom Command</h2>
+                  <p class="card-description">Auto-reply to incoming WhatsApp messages by trigger</p>
+                </div>
+                <div class="card-content">
+                  <form id="command-form">
+                    <input type="hidden" id="commandOriginalTrigger" value="" />
+                    <div class="field">
+                      <label for="commandTrigger">Trigger</label>
+                      <input id="commandTrigger" name="trigger" placeholder=".hello" required />
+                      <p class="hint">Auto adds . at the front, example: .hello</p>
+                    </div>
+
+                    <div class="field">
+                      <label for="commandMediaType">Media Type</label>
+                      <select id="commandMediaType" name="mediaType" required>
+                        <option value="">Select media type first</option>
+                        <option value="none">No media</option>
+                        <% mediaTypes.forEach((type) => { %>
+                        <option value="<%= type %>"><%= type %></option>
+                        <% }) %>
+                      </select>
+                      <p class="hint">Select media type to show related fields.</p>
+                    </div>
+
+                    <div id="command-advanced-fields" hidden>
+                      <div class="field" id="commandMediaSourceField">
+                        <label>Media Source</label>
+                        <div class="source-tabs" role="tablist" aria-label="Media source selector">
+                          <button type="button" class="source-tab active" data-command-media-source="url" role="tab" aria-selected="true">By URL</button>
+                          <button type="button" class="source-tab" data-command-media-source="upload" role="tab" aria-selected="false">Upload File</button>
+                        </div>
+                        <input id="commandMediaSource" name="mediaSource" type="hidden" value="url" />
+                        <p class="hint">Choose where media will be loaded from.</p>
+                      </div>
+
+                      <div class="field" id="commandMediaUrlField">
+                        <label for="commandMediaUrl">Media URL <span class="muted">(optional)</span></label>
+                        <input id="commandMediaUrl" name="mediaUrl" placeholder="https://..." />
+                      </div>
+
+                      <div class="field" id="commandMediaUploadField" hidden>
+                        <label for="commandMediaUpload">Upload Media File <span class="muted">(max 20MB)</span></label>
+                        <input id="commandMediaUpload" name="mediaUpload" type="file" />
+                        <p class="hint" id="commandMediaUploadHint">Choose a file to upload and use as media source.</p>
+                      </div>
+
+                      <div class="field" id="commandFileNameField" hidden>
+                        <label for="commandFileName">File Name <span class="muted">(document only, optional)</span></label>
+                        <input id="commandFileName" name="fileName" placeholder="brochure.pdf" />
+                      </div>
+
+                      <div class="field" id="commandResponseField">
+                        <label for="commandResponse">Response Text</label>
+                        <textarea id="commandResponse" name="response" rows="3" placeholder="Reply message..."></textarea>
+                        <p class="hint" id="commandResponseRuleHint">Response text is required when using media and button together.</p>
+                      </div>
+
+                      <div class="field" id="commandButtonsField">
+                        <div class="field-head">
+                          <label>Buttons <span class="muted">(optional)</span></label>
+                          <div class="field-head-actions">
+                            <button type="button" class="btn btn-outline btn-sm" id="openButtonSetupGuideBtn">Button Setup Guide</button>
+                            <button type="button" class="btn btn-outline btn-sm" id="addButtonRowBtn">Add Button</button>
+                          </div>
+                        </div>
+                        <div id="buttonRows" class="button-rows"></div>
+                        <p class="hint">Use <strong>Button Setup Guide</strong> for required formats and trigger matching rules.</p>
+                      </div>
+
+                      <div class="field-row optional-meta-row" id="commandOptionalMetaRow">
+                        <div class="field">
+                          <label for="commandCategory">Category <span class="muted">(optional)</span></label>
+                          <select id="commandCategory" name="category">
+                            <% commandCategories.forEach((cat) => { %>
+                            <option value="<%= cat %>"><%= cat %></option>
+                            <% }) %>
+                          </select>
+                        </div>
+                        <div class="field">
+                          <label for="commandDescription">Description <span class="muted">(optional)</span></label>
+                          <input id="commandDescription" name="description" placeholder="Short note about this command" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="form-actions">
+                      <button type="submit" class="btn btn-block btn-save-command" id="commandSubmitBtn" disabled>Save Command</button>
+                      <button type="button" class="btn btn-outline btn-block" id="commandCancelBtn" hidden>Cancel Edit</button>
+                    </div>
+                  </form>
+                  <p id="command-feedback" class="feedback"></p>
+                </div>
+              </article>
+            </div>
+
+            <div class="method-panel" id="command-list-panel" role="tabpanel" aria-labelledby="commandTabList" hidden>
+              <article class="card table-card">
+                <div class="card-header section-head">
+                  <div>
+                    <h2 class="card-title">Command List</h2>
+                    <p class="card-description">All bot commands (built-in and custom) in one place</p>
+                  </div>
+                </div>
+                <div class="card-content no-pad">
+                  <div class="table-wrap">
+                    <table class="command-list-table">
+                      <thead>
+                        <tr>
+                          <th>Command</th>
+                          <th>Source</th>
+                          <th>Category</th>
+                          <th>Details</th>
+                          <th>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody id="command-table-body">
+                        <% const builtInCommandTriggers = new Set(['.schedule', '.schedulelist', '.scheduledelete', '.sch', '.schlist', '.schdel', '.vv', '.sticker', '.s']); %>
+                        <tr>
+                          <td>.sch</td>
+                          <td><span class="command-source command-source-built-in">Built-in</span></td>
+                          <td>Schedule</td>
+                          <td class="command-detail-cell">
+                            <button type="button" class="command-detail-trigger" data-popover-target="schedule-builtin" aria-label="View details for .schedule">
+                              <svg class="command-detail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <circle cx="12" cy="12" r="9"></circle>
+                                <path d="M9.1 9a3 3 0 1 1 5.2 2c-.8.8-1.8 1.1-2.3 2.1-.1.2-.2.5-.2.9"></path>
+                                <path d="M12 17h.01"></path>
+                              </svg>
+                              <span class="sr-only">View details</span>
+                            </button>
+                            <div class="command-detail-popover" id="schedule-builtin" hidden>
+                              <p class="command-detail-popover-title">Create schedule from current chat</p>
+                              <p class="command-detail-popover-text">Use <code>.schedule &lt;time&gt; | &lt;message&gt;</code> to create a schedule from the bot chat directly.</p>
+                            </div>
+                          </td>
+                          <td class="command-action-cell"><span class="muted">Managed by system</span></td>
+                        </tr>
+
+                        <tr>
+                          <td>.vv</td>
+                          <td><span class="command-source command-source-built-in">Built-in</span></td>
+                          <td>Utility</td>
+                          <td class="command-detail-cell">
+                            <button type="button" class="command-detail-trigger" data-popover-target="vv-builtin" aria-label="View details for .vv">
+                              <svg class="command-detail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <circle cx="12" cy="12" r="9"></circle>
+                                <path d="M9.1 9a3 3 0 1 1 5.2 2c-.8.8-1.8 1.1-2.3 2.1-.1.2-.2.5-.2.9"></path>
+                                <path d="M12 17h.01"></path>
+                              </svg>
+                              <span class="sr-only">View details</span>
+                            </button>
+                            <div class="command-detail-popover" id="vv-builtin" hidden>
+                              <p class="command-detail-popover-title">View once recovery</p>
+                              <p class="command-detail-popover-text">Reply to a view-once image or video with <code>.vv</code> to reopen it.</p>
+                            </div>
+                          </td>
+                          <td class="command-action-cell"><span class="muted">Managed by system</span></td>
+                        </tr>
+
+                        <tr>
+                          <td>.sticker</td>
+                          <td><span class="command-source command-source-built-in">Built-in</span></td>
+                          <td>Media</td>
+                          <td class="command-detail-cell">
+                            <button type="button" class="command-detail-trigger" data-popover-target="sticker-builtin" aria-label="View details for .sticker">
+                              <svg class="command-detail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <circle cx="12" cy="12" r="9"></circle>
+                                <path d="M9.1 9a3 3 0 1 1 5.2 2c-.8.8-1.8 1.1-2.3 2.1-.1.2-.2.5-.2.9"></path>
+                                <path d="M12 17h.01"></path>
+                              </svg>
+                              <span class="sr-only">View details</span>
+                            </button>
+                            <div class="command-detail-popover" id="sticker-builtin" hidden>
+                              <p class="command-detail-popover-title">Sticker creator</p>
+                              <p class="command-detail-popover-text">Reply to an image, video, or sticker then send <code>.sticker</code> to create a sticker.</p>
+                            </div>
+                          </td>
+                          <td class="command-action-cell"><span class="muted">Managed by system</span></td>
+                        </tr>
+
+                        <% const filteredCustomCommands = customCommands.filter((item) => !builtInCommandTriggers.has(String(item.trigger || '').trim().toLowerCase())); %>
+
+                        <% if (!filteredCustomCommands.length) { %>
+                        <tr>
+                          <td colspan="5" class="muted">No custom commands yet (built-in commands are listed above)</td>
+                        </tr>
+                        <% } %>
+
+                        <% filteredCustomCommands.forEach((item) => { %>
+                        <% const popoverId = `command-detail-${String(item.trigger || '').replace(/[^a-z0-9_-]+/gi, '-')}`; %>
+                        <tr data-trigger="<%= item.trigger %>">
+                          <td><%= item.trigger %></td>
+                          <td><span class="command-source command-source-custom">Custom</span></td>
+                          <td><%= item.category %></td>
+                          <td class="command-detail-cell command-content-cell">
+                            <button type="button" class="command-detail-trigger" data-popover-target="<%= popoverId %>" aria-label="View details for <%= item.trigger %>">
+                              <svg class="command-detail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <circle cx="12" cy="12" r="9"></circle>
+                                <path d="M9.1 9a3 3 0 1 1 5.2 2c-.8.8-1.8 1.1-2.3 2.1-.1.2-.2.5-.2.9"></path>
+                                <path d="M12 17h.01"></path>
+                              </svg>
+                              <span class="sr-only">View details</span>
+                            </button>
+                            <div class="command-detail-popover" id="<%= popoverId %>" hidden>
+                              <p class="command-detail-popover-title"><%= item.trigger %></p>
+                              <p class="command-detail-popover-text">
+                                <strong>Response:</strong> <%= item.response || 'No response text' %><br />
+                                <strong>Media:</strong> <%= item.mediaType || 'none' %><br />
+                                <strong>Buttons:</strong> <%= Array.isArray(item.buttons) ? item.buttons.length : 0 %>
+                              </p>
+                            </div>
+                          </td>
+                          <td class="command-action-cell">
+                            <button class="btn btn-ghost btn-sm btn-edit-command" data-trigger="<%= item.trigger %>">Edit</button>
+                            <button class="btn btn-ghost btn-sm btn-delete-command" data-trigger="<%= item.trigger %>">Delete</button>
+                          </td>
+                        </tr>
+                        <% }) %>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <section class="page" data-page="deleted-messages" id="deleted-messages" hidden>
+            <article class="card table-card">
+              <div class="card-header section-head">
+                <div>
+                  <h2 class="card-title">Deleted Messages</h2>
+                  <p class="card-description">Log of messages that were deleted by senders, captured automatically</p>
+                </div>
+                <button type="button" class="btn btn-outline btn-sm" id="clearDeletedMessagesBtn" <%= !deletedMessages.length ? 'disabled' : '' %>>Clear All</button>
+              </div>
+              <div class="card-content no-pad">
+                <div class="table-wrap">
+                  <table class="deleted-messages-table">
+                    <thead>
+                      <tr>
+                        <th>Chat</th>
+                        <th>Sender</th>
+                        <th>Type</th>
+                        <th>Content</th>
+                        <th>Deleted At</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody id="deleted-messages-table-body">
+                      <% if (!deletedMessages.length) { %>
+                      <tr>
+                        <td colspan="6" class="muted">No deleted messages recorded yet</td>
+                      </tr>
+                      <% } %>
+
+                      <% deletedMessages.forEach((item) => { %>
+                      <tr data-id="<%= item.id %>">
+                        <td>
+                          <%= item.isGroup ? (item.chatName || item.chatId) : item.chatId %>
+                          <% if (item.isGroup) { %>
+                          <span class="badge badge-outline">group</span>
+                          <% } %>
+                        </td>
+                        <td><%= item.senderName || item.senderId || '-' %></td>
+                        <td><span class="badge badge-outline"><%= item.type %></span></td>
+                        <td class="cell-message deleted-content-cell">
+                          <% if (item.mediaUrl) { %>
+                          <a href="<%= item.mediaUrl %>" target="_blank" rel="noopener"><%= item.fileName || 'View media' %></a>
+                          <% if (item.text) { %><br /><span class="muted"><%= item.text %></span><% } %>
+                          <% } else { %>
+                          <%= item.text %>
+                          <% } %>
+                        </td>
+                        <td class="js-local-datetime" data-iso="<%= item.deletedAt %>">
+                          <%= dayjs(item.deletedAt).format('DD MMM YYYY HH:mm:ss') %>
+                        </td>
+                        <td class="cell-action">
+                          <button class="btn btn-ghost btn-sm btn-delete-deleted-message" data-id="<%= item.id %>">Remove</button>
+                        </td>
+                      </tr>
+                      <% }) %>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </article>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <div class="modal" id="commandPreviewModal" hidden>
+      <div class="modal-backdrop" data-close-modal="command-preview"></div>
+      <div class="modal-panel command-preview-panel" role="dialog" aria-modal="true" aria-labelledby="commandPreviewTitle">
+        <button type="button" class="modal-close" id="closeCommandPreviewModal" aria-label="Close preview">&times;</button>
+        <div class="command-preview-viewport" id="commandPreviewViewport">
+          <article class="wa-preview-card">
+            <div class="wa-status-bar">
+              <span class="wa-status-time">2:15 PM</span>
+              <div class="wa-status-icons" aria-hidden="true">
+                <span>◖◗</span>
+                <span>◉</span>
+                <span>▂▄▆</span>
+              </div>
+            </div>
+
+            <header class="wa-chat-header">
+              <span class="wa-back-icon" aria-hidden="true">&#x2039;</span>
+              <div class="wa-preview-avatar">S</div>
+              <div class="wa-preview-meta">
+                <p class="wa-preview-name" id="commandPreviewTitle">Command Preview</p>
+                <p class="wa-preview-status" id="commandPreviewDescription">online</p>
+              </div>
+              <div class="wa-header-actions" aria-hidden="true">
+                <span>&#128222;</span>
+                <span>&#128206;</span>
+                <span>&#8942;</span>
+              </div>
+              <span class="badge badge-outline wa-preview-badge" id="commandPreviewBadge">TEXT</span>
+            </header>
+
+            <div class="wa-chat-window">
+              <div class="wa-chat-conversation">
+                <div class="wa-date-chip" id="commandPreviewDateChip">Today</div>
+
+                <div class="wa-user-bubble">
+                  <p class="wa-user-text" id="commandPreviewIncomingText">!command</p>
+                  <span class="wa-incoming-time" id="commandPreviewIncomingTime">12:00</span>
+                </div>
+
+                <div class="wa-preview-bubble">
+                <div id="commandPreviewMeta" class="command-preview-meta" hidden></div>
+
+                <div class="command-preview-cover-wrap">
+                  <img src="https://avatar.vercel.sh/shadcn1" alt="Command cover" class="command-preview-cover" id="commandPreviewImage" />
+                  <video id="commandPreviewVideo" class="command-preview-media" controls hidden></video>
+                  <audio id="commandPreviewAudio" class="command-preview-audio" controls hidden></audio>
+                  <div id="commandPreviewDocument" class="command-preview-document" hidden>
+                    <span class="badge badge-outline">Document</span>
+                    <a id="commandPreviewDocumentLink" href="#" target="_blank" rel="noopener">Open document</a>
+                  </div>
+                </div>
+
+                <p id="commandPreviewContent" class="command-preview-content" hidden>No content</p>
+
+                <p id="commandPreviewDeliveryHint" class="command-preview-delivery-hint" hidden></p>
+
+                <div id="commandPreviewButtons" class="command-preview-buttons" hidden></div>
+                <span class="wa-preview-time" id="commandPreviewOutgoingTime">12:00 ✓✓</span>
+                </div>
+              </div>
+
+              <div class="wa-composer" aria-hidden="true">
+                <div class="wa-composer-icon">&#9786;</div>
+                <div class="wa-composer-input">Type a message</div>
+                <div class="wa-composer-icon">&#128206;</div>
+                <button type="button" class="wa-composer-send" id="commandPreviewActionBtn">Close Preview</button>
+              </div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal" id="scheduleViewModal" hidden>
+      <div class="modal-backdrop" data-close-modal="schedule-view"></div>
+      <div class="modal-panel schedule-view-modal-panel" role="dialog" aria-modal="true" aria-labelledby="scheduleViewModalTitle">
+        <button type="button" class="modal-close" id="closeScheduleViewModal" aria-label="Close schedule details">&times;</button>
+        <article class="schedule-detail-card schedule-detail-card-sm">
+          <header class="card-header schedule-detail-head">
+            <div>
+              <h3 class="card-title" id="scheduleViewModalTitle">Schedule Details</h3>
+              <p class="card-description" id="scheduleViewModalDescription">Compact detail view for this schedule item.</p>
+            </div>
+            <span class="badge badge-outline" id="scheduleModalStatusPill">-</span>
+          </header>
+
+          <div class="card-content schedule-detail-body">
+            <div class="schedule-modal-grid">
+              <p class="schedule-modal-row"><span class="schedule-modal-label">ID</span><span class="schedule-modal-value" id="scheduleModalId">-</span></p>
+              <p class="schedule-modal-row"><span class="schedule-modal-label">Type</span><span class="schedule-modal-value" id="scheduleModalType">-</span></p>
+              <p class="schedule-modal-row"><span class="schedule-modal-label">Target</span><span class="schedule-modal-value schedule-modal-mono" id="scheduleModalTarget">-</span></p>
+              <p class="schedule-modal-row"><span class="schedule-modal-label">Time</span><span class="schedule-modal-value" id="scheduleModalTime">-</span></p>
+              <p class="schedule-modal-row"><span class="schedule-modal-label">Status</span><span class="schedule-modal-value" id="scheduleModalStatus">-</span></p>
+              <p class="schedule-modal-row schedule-modal-row-message"><span class="schedule-modal-label">Message</span><span class="schedule-modal-value" id="scheduleModalMessage">-</span></p>
+            </div>
+            <p class="feedback" id="scheduleModalFeedback"></p>
+          </div>
+
+          <footer class="schedule-modal-actions schedule-detail-footer">
+            <button type="button" class="btn btn-outline" id="scheduleModalCloseBtn">Close</button>
+            <button type="button" class="btn btn-outline btn-delete-modal" id="scheduleModalDeleteBtn">Delete Schedule</button>
+          </footer>
+        </article>
+      </div>
+    </div>
+
+    <div class="modal" id="destructiveConfirmModal" hidden>
+      <div class="modal-backdrop" data-close-modal="destructive-confirm"></div>
+      <div
+        class="modal-panel destructive-confirm-modal-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="destructiveConfirmTitle"
+        aria-describedby="destructiveConfirmDescription"
+      >
+        <div class="alert-dialog-header">
+          <span class="alert-dialog-media" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+              <path d="M10 11v6M14 11v6"></path>
+              <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
+            </svg>
+          </span>
+          <h3 class="card-title" id="destructiveConfirmTitle">Delete item?</h3>
+          <p class="alert-dialog-description" id="destructiveConfirmDescription">This action cannot be undone.</p>
+        </div>
+        <div class="alert-dialog-footer">
+          <button type="button" class="btn btn-outline" id="destructiveConfirmCancelBtn">Cancel</button>
+          <button type="button" class="btn btn-delete-modal" id="destructiveConfirmActionBtn">Delete</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal" id="buttonSetupGuideModal" hidden>
+      <div class="modal-backdrop" data-close-modal="button-setup-guide"></div>
+      <div class="modal-panel button-setup-guide-modal-panel" role="dialog" aria-modal="true" aria-labelledby="buttonSetupGuideModalTitle">
+        <button type="button" class="modal-close" id="closeButtonSetupGuideModal" aria-label="Close button setup guide">&times;</button>
+        <div class="card-content button-setup-guide-content">
+          <h3 class="card-title" id="buttonSetupGuideModalTitle">Button Setup Guide</h3>
+          <ul class="button-setup-guide-list">
+            <li><strong>Quick Reply Button:</strong> The <strong>Value (id)</strong> MUST match an existing command trigger (example: <code>.hello</code>, <code>.menu1</code>).</li>
+            <li><strong>Single Select:</strong> Each row ID must also match a command trigger.</li>
+            <li><strong>Call Button:</strong> Enter phone number with country code (example: <a href="tel:60123456789">60123456789</a>).</li>
+            <li><strong>Copy Code Button:</strong> Enter the code to copy (example: <code>PROMO2024</code>).</li>
+          </ul>
+          <p class="button-setup-guide-example"><strong>Example:</strong> If you create a command with trigger <strong>.hello</strong>, then add a Quick Reply button with Value = <strong>.hello</strong>. When user clicks the button, it will trigger the <strong>.hello</strong> command.</p>
+          <p class="button-setup-guide-json">For JSON rows format: <code>[{"id":".cmd1","title":"Option 1"},{"id":".cmd2","title":"Option 2"}]</code></p>
+          <div class="schedule-modal-actions">
+            <button type="button" class="btn btn-outline" id="buttonSetupGuideModalCloseBtn">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      window.__SCHEDULES__ = <%- JSON.stringify(schedules) %>;
+      window.__CUSTOM_COMMANDS__ = <%- JSON.stringify(customCommands) %>;
+      window.__CHAT_RESPONSE_SETTINGS__ = <%- JSON.stringify(chatResponseSettings) %>;
+      window.__ACCESS_CONTROL_SETTINGS__ = <%- JSON.stringify(accessControlSettings) %>;
+    </script>
+    <script src="/public/app.js"></script>
+  </body>
+</html>

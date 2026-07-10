@@ -1,0 +1,355 @@
+const express = require('express');
+const fs = require('fs');
+const path = require('path');
+const dayjs = require('dayjs');
+const multer = require('multer');
+const scheduleStore = require('../services/scheduleStore');
+const customCommandStore = require('../services/customCommandStore');
+const deletedMessageStore = require('../services/deletedMessageStore');
+const chatResponseSettingsStore = require('../services/chatResponseSettingsStore');
+const accessControlStore = require('../services/accessControlStore');
+
+const uploadDir = path.join(process.cwd(), 'uploads');
+const uploadStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    fs.mkdirSync(uploadDir, { recursive: true });
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname || '').toLowerCase();
+    const baseName = path
+      .basename(file.originalname || 'media', ext)
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]+/g, '-');
+    cb(null, `${Date.now()}-${baseName || 'media'}${ext}`);
+  },
+});
+
+const upload = multer({
+  storage: uploadStorage,
+  limits: { fileSize: 20 * 1024 * 1024 },
+});
+
+function parseClientLocalDateTime(scheduleAt, timezoneOffsetMinutes) {
+  const raw = String(scheduleAt || '').trim();
+  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/);
+  if (!match) return null;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  const offset = Number.isFinite(Number(timezoneOffsetMinutes))
+    ? Number(timezoneOffsetMinutes)
+    : 0;
+
+  const utcMs = Date.UTC(year, month - 1, day, hour, minute) + (offset * 60 * 1000);
+  const parsed = dayjs(utcMs);
+
+  if (!parsed.isValid()) return null;
+  return parsed;
+}
+
+function createDashboardRouter(whatsappService) {
+  const router = express.Router();
+
+  async function getDashboardViewData() {
+    const schedules = await scheduleStore.listSchedules();
+    const waState = whatsappService.getConnectionState();
+    const scheduleStats = schedules.reduce(
+      (acc, item) => {
+        acc.total += 1;
+        if (item.status === 'pending') acc.pending += 1;
+        if (item.status === 'sent') acc.sent += 1;
+        if (item.status === 'failed') acc.failed += 1;
+        return acc;
+      },
+      { total: 0, pending: 0, sent: 0, failed: 0 }
+    );
+
+    const customCommands = customCommandStore.listCommands();
+    const deletedMessages = deletedMessageStore.listRecords();
+    const chatResponseSettings = chatResponseSettingsStore.getSettings();
+    const accessControlSettings = accessControlStore.getSettings();
+
+    return {
+      schedules,
+      waState,
+      scheduleStats,
+      dayjs,
+      customCommands,
+      commandCategories: customCommandStore.ALLOWED_CATEGORIES,
+      mediaTypes: customCommandStore.ALLOWED_MEDIA_TYPES,
+      deletedMessages,
+      chatResponseSettings,
+      accessControlSettings,
+    };
+  }
+
+  router.get('/', async (req, res, next) => {
+    try {
+      const viewData = await getDashboardViewData();
+      res.render('dashboard', viewData);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.get('/schedule/create', (req, res) => {
+    return res.render('schedule-share');
+  });
+
+  router.get('/api/custom-commands', (req, res) => {
+    return res.json({ commands: customCommandStore.listCommands() });
+  });
+
+  router.post('/api/custom-commands', (req, res) => {
+    try {
+      const created = customCommandStore.createCommand(req.body || {});
+      return res.status(201).json(created);
+    } catch (error) {
+      return res.status(400).json({ error: error.message });
+    }
+  });
+
+  router.post('/api/custom-commands/upload-media', upload.single('mediaFile'), (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: 'No file uploaded' });
+      }
+
+      const mediaType = String(req.body?.mediaType || '').trim();
+      const allowedMedia = new Set(customCommandStore.ALLOWED_MEDIA_TYPES);
+      if (!allowedMedia.has(mediaType)) {
+        return res.status(400).json({ error: 'Invalid media type for upload' });
+      }
+
+      const host = req.get('host');
+      const protocol = req.protocol || 'http';
+      const mediaUrl = `${protocol}://${host}/uploads/${req.file.filename}`;
+
+      return res.status(201).json({
+        mediaUrl,
+        fileName: req.file.originalname || req.file.filename,
+      });
+    } catch (error) {
+      return res.status(400).json({ error: error.message || 'Failed to upload media file' });
+    }
+  });
+
+  router.put('/api/custom-commands/:trigger', (req, res) => {
+    try {
+      const updated = customCommandStore.updateCommand(req.params.trigger, req.body || {});
+      return res.json(updated);
+    } catch (error) {
+      const status = error.message === 'Command not found' ? 404 : 400;
+      return res.status(status).json({ error: error.message });
+    }
+  });
+
+  router.delete('/api/custom-commands/:trigger', (req, res) => {
+    const removed = customCommandStore.removeCommand(req.params.trigger);
+    if (!removed) {
+      return res.status(404).json({ error: 'Command not found' });
+    }
+    return res.status(204).send();
+  });
+
+  router.post('/api/schedules', async (req, res, next) => {
+    try {
+      const { targetType, targetValue, message, scheduleAt, timezoneOffsetMinutes } = req.body;
+      const normalizedTargetType =
+        targetType === 'personal-manual' || targetType === 'personal-chat' ? 'personal' : targetType;
+
+      if (!normalizedTargetType || !targetValue || !message || !scheduleAt) {
+        return res.status(400).json({
+          error: 'targetType, targetValue, message, and scheduleAt are required',
+        });
+      }
+
+      if (!['personal', 'group'].includes(normalizedTargetType)) {
+        return res.status(400).json({ error: 'targetType must be personal or group' });
+      }
+
+      const parsed = parseClientLocalDateTime(scheduleAt, timezoneOffsetMinutes);
+      if (!parsed.isValid()) {
+        return res.status(400).json({
+          error: 'Invalid scheduleAt format',
+        });
+      }
+
+      const created = await scheduleStore.createSchedule({
+        targetType: normalizedTargetType,
+        targetValue,
+        message,
+        scheduleAt: parsed.toISOString(),
+      });
+
+      return res.status(201).json(created);
+    } catch (error) {
+      return next(error);
+    }
+  });
+
+  router.post('/api/messages/send', async (req, res) => {
+    try {
+      const { targetType, targetValue, message } = req.body || {};
+      const normalizedTargetType =
+        targetType === 'personal-manual' || targetType === 'personal-chat' ? 'personal' : targetType;
+
+      if (!normalizedTargetType || !targetValue || !message) {
+        return res.status(400).json({
+          error: 'targetType, targetValue, and message are required',
+        });
+      }
+
+      if (!['personal', 'group'].includes(normalizedTargetType)) {
+        return res.status(400).json({ error: 'targetType must be personal or group' });
+      }
+
+      await whatsappService.sendMessage(
+        normalizedTargetType,
+        String(targetValue).trim(),
+        String(message).trim()
+      );
+
+      return res.status(200).json({ ok: true });
+    } catch (error) {
+      const status = error.message === 'WhatsApp client is not ready' ? 409 : 400;
+      return res.status(status).json({ error: error.message || 'Failed to send message' });
+    }
+  });
+
+  router.delete('/api/schedules/:id', async (req, res, next) => {
+    try {
+      const id = Number(req.params.id);
+      if (!Number.isInteger(id)) {
+        return res.status(400).json({ error: 'Invalid ID' });
+      }
+
+      const deleted = await scheduleStore.removeSchedule(id);
+      if (!deleted) {
+        return res.status(404).json({ error: 'Schedule not found' });
+      }
+
+      return res.status(204).send();
+    } catch (error) {
+      return next(error);
+    }
+  });
+
+  router.get('/api/deleted-messages', (req, res) => {
+    return res.json({ messages: deletedMessageStore.listRecords() });
+  });
+
+  router.delete('/api/deleted-messages/:id', (req, res) => {
+    const removed = deletedMessageStore.removeRecord(req.params.id);
+    if (!removed) {
+      return res.status(404).json({ error: 'Record not found' });
+    }
+    return res.status(204).send();
+  });
+
+  router.delete('/api/deleted-messages', (req, res) => {
+    deletedMessageStore.clearRecords();
+    return res.status(204).send();
+  });
+
+  router.get('/api/whatsapp/groups', async (req, res, next) => {
+    try {
+      const groups = await whatsappService.listGroups();
+      return res.json({ groups });
+    } catch (error) {
+      if (error.message === 'WhatsApp client is not ready') {
+        return res.status(409).json({ error: error.message });
+      }
+      return next(error);
+    }
+  });
+
+  router.get('/api/whatsapp/personal-chats', async (req, res, next) => {
+    try {
+      const chats = await whatsappService.listPersonalChats();
+      return res.json({ chats });
+    } catch (error) {
+      if (error.message === 'WhatsApp client is not ready') {
+        return res.status(409).json({ error: error.message });
+      }
+      return next(error);
+    }
+  });
+
+  router.get('/api/whatsapp/state', (req, res) => {
+    const waState = whatsappService.getConnectionState();
+    return res.json(waState);
+  });
+
+  router.get('/api/chat-response-settings', (req, res) => {
+    return res.json(chatResponseSettingsStore.getSettings());
+  });
+
+  router.put('/api/chat-response-settings', (req, res) => {
+    try {
+      const payload = req.body || {};
+      const hasPersonal = Object.prototype.hasOwnProperty.call(payload, 'personalEnabled');
+      const hasGroup = Object.prototype.hasOwnProperty.call(payload, 'groupEnabled');
+
+      if (!hasPersonal && !hasGroup) {
+        return res.status(400).json({ error: 'personalEnabled or groupEnabled is required' });
+      }
+
+      if (hasPersonal && typeof payload.personalEnabled !== 'boolean') {
+        return res.status(400).json({ error: 'personalEnabled must be a boolean' });
+      }
+
+      if (hasGroup && typeof payload.groupEnabled !== 'boolean') {
+        return res.status(400).json({ error: 'groupEnabled must be a boolean' });
+      }
+
+      const updated = chatResponseSettingsStore.updateSettings(payload);
+      return res.json(updated);
+    } catch (error) {
+      return res.status(400).json({ error: error.message || 'Failed to update chat response settings' });
+    }
+  });
+
+  router.get('/api/access-control-settings', (req, res) => {
+    return res.json(accessControlStore.getSettings());
+  });
+
+  router.put('/api/access-control-settings', (req, res) => {
+    try {
+      const payload = req.body || {};
+      const hasOwner = Object.prototype.hasOwnProperty.call(payload, 'ownerNumber');
+      const hasMode = Object.prototype.hasOwnProperty.call(payload, 'commandMode');
+
+      if (!hasOwner && !hasMode) {
+        return res.status(400).json({ error: 'ownerNumber or commandMode is required' });
+      }
+
+      if (hasMode && !['public', 'private'].includes(String(payload.commandMode || '').trim().toLowerCase())) {
+        return res.status(400).json({ error: 'commandMode must be public or private' });
+      }
+
+      const updated = accessControlStore.updateSettings(payload);
+      return res.json(updated);
+    } catch (error) {
+      return res.status(400).json({ error: error.message || 'Failed to update access control settings' });
+    }
+  });
+
+  router.post('/api/whatsapp/pairing-code', async (req, res) => {
+    try {
+      const { phoneNumber } = req.body || {};
+      const code = await whatsappService.requestPairingCode(phoneNumber);
+      return res.json({ code });
+    } catch (error) {
+      return res.status(400).json({ error: error.message });
+    }
+  });
+
+  return router;
+}
+
+module.exports = createDashboardRouter;
