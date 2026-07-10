@@ -72,23 +72,64 @@ function parseScheduleDateTime(raw) {
   return parsed;
 }
 
-function buildUsageCtaButtons(settingsButtons, fallbackUrl = '') {
+function buildUsageInteractiveButtons(settingsButtons, fallbackUrl = '') {
   const source = Array.isArray(settingsButtons) ? settingsButtons : [];
 
   return source
     .map((item, index) => {
-      const displayText = String(item?.displayText || '').trim() || `Link ${index + 1}`;
-      const rawUrl = String(item?.url || '').trim();
-      const url = rawUrl || String(fallbackUrl || '').trim();
-      if (!url) return null;
+      // Legacy format: { displayText, url }
+      if (!item?.name && Object.prototype.hasOwnProperty.call(item || {}, 'displayText')) {
+        const displayText = String(item?.displayText || '').trim() || `Link ${index + 1}`;
+        const rawUrl = String(item?.url || '').trim();
+        const url = rawUrl || String(fallbackUrl || '').trim();
+        if (!url) return null;
+
+        return {
+          name: 'cta_url',
+          buttonParamsJson: JSON.stringify({
+            display_text: displayText,
+            url,
+            merchant_url: url,
+          }),
+        };
+      }
+
+      const name = String(item?.name || '').trim();
+      if (!name) return null;
+
+      let params = {};
+      if (typeof item?.buttonParamsJson === 'string') {
+        try {
+          const parsed = JSON.parse(item.buttonParamsJson);
+          params = parsed && typeof parsed === 'object' ? parsed : {};
+        } catch (error) {
+          params = {};
+        }
+      } else if (item?.buttonParamsJson && typeof item.buttonParamsJson === 'object') {
+        params = item.buttonParamsJson;
+      }
+
+      // For cta_url we still support automatic fallback URL when empty.
+      if (name === 'cta_url') {
+        const displayText = String(params.display_text || '').trim() || `Link ${index + 1}`;
+        const rawUrl = String(params.url || '').trim();
+        const url = rawUrl || String(fallbackUrl || '').trim();
+        if (!url) return null;
+
+        return {
+          name,
+          buttonParamsJson: JSON.stringify({
+            ...params,
+            display_text: displayText,
+            url,
+            merchant_url: String(params.merchant_url || url).trim() || url,
+          }),
+        };
+      }
 
       return {
-        name: 'cta_url',
-        buttonParamsJson: JSON.stringify({
-          display_text: displayText,
-          url,
-          merchant_url: url,
-        }),
+        name,
+        buttonParamsJson: JSON.stringify(params || {}),
       };
     })
     .filter(Boolean);
@@ -663,7 +704,10 @@ class WhatsAppService {
 
     if (this.ready && jid) {
       const profileAge = Date.now() - Number(this.connectedProfile?.updatedAt || 0);
-      if (!this.connectedProfile?.updatedAt || profileAge > 5 * 60 * 1000) {
+      const hasAvatar = Boolean(String(this.connectedProfile?.avatarUrl || '').trim());
+      const shouldRetryMissingAvatar = !hasAvatar && profileAge > 20 * 1000;
+
+      if (!this.connectedProfile?.updatedAt || profileAge > 5 * 60 * 1000 || shouldRetryMissingAvatar) {
         this.refreshConnectedProfile().catch(() => {});
       }
     }
@@ -821,20 +865,29 @@ class WhatsAppService {
     if (!this.sock || event.type !== 'notify') return;
 
     for (const message of event.messages || []) {
-      if (!message?.message || message.key?.fromMe) continue;
+      if (!message?.message) continue;
 
       const chatId = message.key?.remoteJid;
       if (!chatId) continue;
+
+      const content = normalizeMessageContent(message.message) || message.message;
+      const interactiveSelectionId = this.extractInteractiveSelectionId(content);
+      const text = this.extractMessageText(content);
+      const isCommandText = text.trim().startsWith('.') || text.trim().startsWith('!');
+      const isFromMe = Boolean(message.key?.fromMe);
+      const isSelfCommandAllowed = this.isSelfCommandMessageAllowed(chatId, message.key, isCommandText);
+      if (isFromMe && !isSelfCommandAllowed) continue;
+
+      const isSelfCommandMessage = isFromMe && isSelfCommandAllowed;
 
       if (!chatResponseSettingsStore.isResponseEnabledForChat(chatId)) {
         continue;
       }
 
-      const content = normalizeMessageContent(message.message) || message.message;
-
-      const interactiveSelectionId = this.extractInteractiveSelectionId(content);
-      const text = this.extractMessageText(content);
-      const isCommandText = text.trim().startsWith('.') || text.trim().startsWith('!');
+      // Self-command mode is limited to explicit command triggers only.
+      if (isSelfCommandMessage && !isCommandText) {
+        continue;
+      }
 
       if (isCommandText && !this.isCommandAccessAllowed(chatId, message.key)) {
         await this.sock.sendMessage(
@@ -889,6 +942,20 @@ class WhatsAppService {
 
       await this.replyWithCustomCommand(chatId, matched);
     }
+  }
+
+  isSelfCommandMessageAllowed(chatId, key, isCommandText) {
+    if (!key?.fromMe) return false;
+    if (!isCommandText) return false;
+
+    const settings = chatResponseSettingsStore.getSettings();
+    if (!settings.selfCommandEnabled) return false;
+
+    const connectedJid = normalizeConnectedJid(this.sock?.user?.id || this.sock?.user?.jid || '');
+    const normalizedChatId = normalizeConnectedJid(chatId);
+    if (!connectedJid || !normalizedChatId) return false;
+
+    return connectedJid === normalizedChatId;
   }
 
   extractMessageText(content) {
@@ -1140,14 +1207,50 @@ class WhatsAppService {
     const normalizedButtons = (Array.isArray(builtInSettings.scheduleUsageButtons)
       ? builtInSettings.scheduleUsageButtons
       : []).map((item) => {
-      const rawUrl = String(item?.url || '').trim();
-      const normalizedUrl = rawUrl.startsWith('/') ? `${getPublicBaseUrl()}${rawUrl}` : rawUrl;
+      // Legacy format compatibility: { displayText, url }
+      if (!item?.name && Object.prototype.hasOwnProperty.call(item || {}, 'displayText')) {
+        const rawUrl = String(item?.url || '').trim();
+        const normalizedUrl = rawUrl.startsWith('/') ? `${getPublicBaseUrl()}${rawUrl}` : rawUrl;
+        return {
+          displayText: String(item?.displayText || '').trim(),
+          url: normalizedUrl,
+        };
+      }
+
+      const name = String(item?.name || '').trim();
+      if (!name) return null;
+
+      let params = {};
+      if (typeof item?.buttonParamsJson === 'string') {
+        try {
+          const parsed = JSON.parse(item.buttonParamsJson);
+          params = parsed && typeof parsed === 'object' ? parsed : {};
+        } catch (error) {
+          params = {};
+        }
+      } else if (item?.buttonParamsJson && typeof item.buttonParamsJson === 'object') {
+        params = item.buttonParamsJson;
+      }
+
+      if (name === 'cta_url') {
+        const rawUrl = String(params.url || '').trim();
+        const normalizedUrl = rawUrl.startsWith('/') ? `${getPublicBaseUrl()}${rawUrl}` : rawUrl;
+        return {
+          name,
+          buttonParamsJson: JSON.stringify({
+            ...params,
+            url: normalizedUrl,
+            merchant_url: String(params.merchant_url || normalizedUrl).trim() || normalizedUrl,
+          }),
+        };
+      }
+
       return {
-        displayText: String(item?.displayText || '').trim(),
-        url: normalizedUrl,
+        name,
+        buttonParamsJson: JSON.stringify(params || {}),
       };
-    });
-    const usageButtons = buildUsageCtaButtons(normalizedButtons, scheduleShareUrl);
+    }).filter(Boolean);
+    const usageButtons = buildUsageInteractiveButtons(normalizedButtons, scheduleShareUrl);
 
     const sendUsageHelp = async (text) => {
       if (!usageButtons.length) {
@@ -1275,7 +1378,7 @@ class WhatsAppService {
 
       if (!ownSchedules.length) {
         const builtInSettings = builtInCommandSettingsStore.getSettings();
-        const usageButtons = buildUsageCtaButtons(builtInSettings.scheduleListButtons);
+        const usageButtons = buildUsageInteractiveButtons(builtInSettings.scheduleListButtons);
         if (!usageButtons.length) {
           await this.sock.sendMessage(chatId, { text: builtInSettings.scheduleListEmptyText }, { quoted: message });
         } else {
@@ -1328,7 +1431,7 @@ class WhatsAppService {
     const id = Number(String(args || '').trim());
     if (!Number.isInteger(id) || id <= 0) {
       const builtInSettings = builtInCommandSettingsStore.getSettings();
-      const usageButtons = buildUsageCtaButtons(builtInSettings.scheduleDeleteButtons);
+      const usageButtons = buildUsageInteractiveButtons(builtInSettings.scheduleDeleteButtons);
       if (!usageButtons.length) {
         await this.sock.sendMessage(
           chatId,
@@ -1783,7 +1886,7 @@ class WhatsAppService {
     const target = this.resolveStickerMedia(content);
     if (!target) {
       const builtInSettings = builtInCommandSettingsStore.getSettings();
-      const usageButtons = buildUsageCtaButtons(builtInSettings.stickerUsageButtons);
+      const usageButtons = buildUsageInteractiveButtons(builtInSettings.stickerUsageButtons);
       if (!usageButtons.length) {
         await this.sock.sendMessage(
           chatId,
@@ -1839,7 +1942,7 @@ class WhatsAppService {
         );
       } else {
         const builtInSettings = builtInCommandSettingsStore.getSettings();
-        const usageButtons = buildUsageCtaButtons(builtInSettings.vvUsageButtons);
+        const usageButtons = buildUsageInteractiveButtons(builtInSettings.vvUsageButtons);
         if (!usageButtons.length) {
           await this.sock.sendMessage(chatId, { text: builtInSettings.vvUsageHelpText });
         } else {

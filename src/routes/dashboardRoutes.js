@@ -297,9 +297,10 @@ function createDashboardRouter(whatsappService) {
       const payload = req.body || {};
       const hasPersonal = Object.prototype.hasOwnProperty.call(payload, 'personalEnabled');
       const hasGroup = Object.prototype.hasOwnProperty.call(payload, 'groupEnabled');
+      const hasSelfCommand = Object.prototype.hasOwnProperty.call(payload, 'selfCommandEnabled');
 
-      if (!hasPersonal && !hasGroup) {
-        return res.status(400).json({ error: 'personalEnabled or groupEnabled is required' });
+      if (!hasPersonal && !hasGroup && !hasSelfCommand) {
+        return res.status(400).json({ error: 'personalEnabled, groupEnabled, or selfCommandEnabled is required' });
       }
 
       if (hasPersonal && typeof payload.personalEnabled !== 'boolean') {
@@ -308,6 +309,10 @@ function createDashboardRouter(whatsappService) {
 
       if (hasGroup && typeof payload.groupEnabled !== 'boolean') {
         return res.status(400).json({ error: 'groupEnabled must be a boolean' });
+      }
+
+      if (hasSelfCommand && typeof payload.selfCommandEnabled !== 'boolean') {
+        return res.status(400).json({ error: 'selfCommandEnabled must be a boolean' });
       }
 
       const updated = chatResponseSettingsStore.updateSettings(payload);

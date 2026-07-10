@@ -13,8 +13,12 @@ const DEFAULT_SCHEDULE_USAGE_BUTTON_TEXT = 'Schedule Web';
 const DEFAULT_SCHEDULE_USAGE_BUTTON_URL = '';
 const DEFAULT_SCHEDULE_USAGE_BUTTONS = [
   {
-    displayText: DEFAULT_SCHEDULE_USAGE_BUTTON_TEXT,
-    url: DEFAULT_SCHEDULE_USAGE_BUTTON_URL,
+    name: 'cta_url',
+    buttonParamsJson: JSON.stringify({
+      display_text: DEFAULT_SCHEDULE_USAGE_BUTTON_TEXT,
+      url: DEFAULT_SCHEDULE_USAGE_BUTTON_URL,
+      merchant_url: DEFAULT_SCHEDULE_USAGE_BUTTON_URL,
+    }),
   },
 ];
 
@@ -61,24 +65,52 @@ function normalizeStickerUsageHelpText(value) {
   return text;
 }
 
-function normalizeScheduleUsageButtonText(value) {
-  return String(value || '').trim();
-}
-
-function normalizeScheduleUsageButtonUrl(value) {
-  return String(value || '').trim();
-}
-
-function normalizeScheduleUsageButtons(value) {
+function normalizeInteractiveButtons(value) {
   const sourceButtons = Array.isArray(value) ? value : [];
   const buttons = [];
 
   for (const item of sourceButtons) {
     if (!item || typeof item !== 'object') continue;
-    const displayText = normalizeScheduleUsageButtonText(item.displayText);
-    const url = normalizeScheduleUsageButtonUrl(item.url);
-    if (!displayText) continue;
-    buttons.push({ displayText, url });
+
+    // Legacy format compatibility: { displayText, url }
+    if (!item.name && Object.prototype.hasOwnProperty.call(item, 'displayText')) {
+      const displayText = String(item.displayText || '').trim();
+      if (!displayText) continue;
+      const url = String(item.url || '').trim();
+      buttons.push({
+        name: 'cta_url',
+        buttonParamsJson: JSON.stringify({
+          display_text: displayText,
+          url,
+          merchant_url: url,
+        }),
+      });
+      continue;
+    }
+
+    const name = String(item.name || '').trim();
+    if (!name) continue;
+
+    let params = {};
+    if (typeof item.buttonParamsJson === 'string') {
+      try {
+        const parsed = JSON.parse(item.buttonParamsJson);
+        params = parsed && typeof parsed === 'object' ? parsed : {};
+      } catch (error) {
+        params = {};
+      }
+    } else if (item.buttonParamsJson && typeof item.buttonParamsJson === 'object') {
+      params = item.buttonParamsJson;
+    }
+
+    if (!params || typeof params !== 'object') {
+      params = {};
+    }
+
+    buttons.push({
+      name,
+      buttonParamsJson: JSON.stringify(params),
+    });
   }
 
   return buttons;
@@ -91,26 +123,33 @@ function normalizeLegacyButtons(source) {
 
   const displayText = String(raw.scheduleUsageButtonText || '').trim() || DEFAULT_SCHEDULE_USAGE_BUTTON_TEXT;
   const url = String(raw.scheduleUsageButtonUrl || '').trim();
-  return [{ displayText, url }];
+  return [{
+    name: 'cta_url',
+    buttonParamsJson: JSON.stringify({
+      display_text: displayText,
+      url,
+      merchant_url: url,
+    }),
+  }];
 }
 
 function normalizeSettings(value) {
   const source = value && typeof value === 'object' ? value : {};
   const hasButtonsArray = Object.prototype.hasOwnProperty.call(source, 'scheduleUsageButtons');
-  const normalizedButtons = normalizeScheduleUsageButtons(source.scheduleUsageButtons);
+  const normalizedButtons = normalizeInteractiveButtons(source.scheduleUsageButtons);
   const buttons = hasButtonsArray ? normalizedButtons : normalizeLegacyButtons(source);
 
   return {
     scheduleUsageHelpText: normalizeScheduleUsageHelpText(source.scheduleUsageHelpText),
     scheduleUsageButtons: buttons,
     scheduleListEmptyText: normalizeScheduleListEmptyText(source.scheduleListEmptyText),
-    scheduleListButtons: normalizeScheduleUsageButtons(source.scheduleListButtons),
+    scheduleListButtons: normalizeInteractiveButtons(source.scheduleListButtons),
     scheduleDeleteUsageText: normalizeScheduleDeleteUsageText(source.scheduleDeleteUsageText),
-    scheduleDeleteButtons: normalizeScheduleUsageButtons(source.scheduleDeleteButtons),
+    scheduleDeleteButtons: normalizeInteractiveButtons(source.scheduleDeleteButtons),
     vvUsageHelpText: normalizeVvUsageHelpText(source.vvUsageHelpText),
-    vvUsageButtons: normalizeScheduleUsageButtons(source.vvUsageButtons),
+    vvUsageButtons: normalizeInteractiveButtons(source.vvUsageButtons),
     stickerUsageHelpText: normalizeStickerUsageHelpText(source.stickerUsageHelpText),
-    stickerUsageButtons: normalizeScheduleUsageButtons(source.stickerUsageButtons),
+    stickerUsageButtons: normalizeInteractiveButtons(source.stickerUsageButtons),
   };
 }
 
@@ -152,6 +191,114 @@ function getSettings() {
 
 function getScheduleUsageHelpText() {
   return settings.scheduleUsageHelpText;
+}
+
+function parseButtonParams(button) {
+  if (!button || typeof button !== 'object') return {};
+
+  if (typeof button.buttonParamsJson === 'string') {
+    try {
+      const parsed = JSON.parse(button.buttonParamsJson);
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch (error) {
+      return {};
+    }
+  }
+
+  if (button.buttonParamsJson && typeof button.buttonParamsJson === 'object') {
+    return button.buttonParamsJson;
+  }
+
+  return {};
+}
+
+function validateBuiltInButton(button, label = 'Button') {
+  if (!button || typeof button !== 'object') {
+    throw new Error(`${label} format is invalid`);
+  }
+
+  const name = String(button.name || '').trim();
+  if (!name) {
+    throw new Error(`${label} type is required`);
+  }
+
+  const params = parseButtonParams(button);
+  const displayText = String(params.display_text || params.title || '').trim();
+
+  if (displayText && displayText.length > 60) {
+    throw new Error('Button label is too long (max 60 characters)');
+  }
+
+  if (name === 'cta_url') {
+    const url = String(params.url || '').trim();
+    if (url.length > 2048) {
+      throw new Error('Button URL is too long (max 2048 characters)');
+    }
+    if (!url) return;
+    const isAbsoluteHttpUrl = /^https?:\/\//i.test(url);
+    const isAbsolutePath = url.startsWith('/');
+    if (!isAbsoluteHttpUrl && !isAbsolutePath) {
+      throw new Error('Button URL must start with http://, https://, or /');
+    }
+    return;
+  }
+
+  if (name === 'quick_reply') {
+    if (!displayText) {
+      throw new Error('Quick Reply button label is required');
+    }
+    const id = String(params.id || '').trim();
+    if (!id) {
+      throw new Error('Quick Reply value (id) is required');
+    }
+    return;
+  }
+
+  if (name === 'cta_call' || name === 'cta_wa') {
+    const phone = String(params.phone_number || '').trim();
+    if (!phone) {
+      throw new Error('Phone number is required for call/WhatsApp button');
+    }
+    return;
+  }
+
+  if (name === 'cta_copy') {
+    const copyCode = String(params.copy_code || '').trim();
+    if (!copyCode) {
+      throw new Error('Copy code is required for copy button');
+    }
+    return;
+  }
+
+  if (name === 'single_select') {
+    const title = String(params.title || '').trim();
+    const sections = Array.isArray(params.sections) ? params.sections : [];
+    if (!title) {
+      throw new Error('Single Select title is required');
+    }
+    if (!sections.length) {
+      throw new Error('Single Select requires at least one section');
+    }
+
+    let hasRow = false;
+    for (const section of sections) {
+      if (!section || typeof section !== 'object') continue;
+      const rows = Array.isArray(section.rows) ? section.rows : [];
+      for (const row of rows) {
+        if (!row || typeof row !== 'object') continue;
+        const rowId = String(row.id || '').trim();
+        const rowTitle = String(row.title || '').trim();
+        if (!rowId || !rowTitle) {
+          throw new Error('Single Select row requires id and title');
+        }
+        hasRow = true;
+      }
+    }
+
+    if (!hasRow) {
+      throw new Error('Single Select requires at least one valid row');
+    }
+  }
 }
 
 function updateSettings(partial) {
@@ -214,19 +361,19 @@ function updateSettings(partial) {
     ? String(payload.scheduleUsageHelpText || '').trim()
     : settings.scheduleUsageHelpText;
   const buttons = Object.prototype.hasOwnProperty.call(payload, 'scheduleUsageButtons')
-    ? normalizeScheduleUsageButtons(payload.scheduleUsageButtons)
+    ? normalizeInteractiveButtons(payload.scheduleUsageButtons)
     : settings.scheduleUsageButtons.map((item) => ({ ...item }));
   const scheduleListButtons = Object.prototype.hasOwnProperty.call(payload, 'scheduleListButtons')
-    ? normalizeScheduleUsageButtons(payload.scheduleListButtons)
+    ? normalizeInteractiveButtons(payload.scheduleListButtons)
     : settings.scheduleListButtons.map((item) => ({ ...item }));
   const scheduleDeleteButtons = Object.prototype.hasOwnProperty.call(payload, 'scheduleDeleteButtons')
-    ? normalizeScheduleUsageButtons(payload.scheduleDeleteButtons)
+    ? normalizeInteractiveButtons(payload.scheduleDeleteButtons)
     : settings.scheduleDeleteButtons.map((item) => ({ ...item }));
   const vvUsageButtons = Object.prototype.hasOwnProperty.call(payload, 'vvUsageButtons')
-    ? normalizeScheduleUsageButtons(payload.vvUsageButtons)
+    ? normalizeInteractiveButtons(payload.vvUsageButtons)
     : settings.vvUsageButtons.map((item) => ({ ...item }));
   const stickerUsageButtons = Object.prototype.hasOwnProperty.call(payload, 'stickerUsageButtons')
-    ? normalizeScheduleUsageButtons(payload.stickerUsageButtons)
+    ? normalizeInteractiveButtons(payload.stickerUsageButtons)
     : settings.stickerUsageButtons.map((item) => ({ ...item }));
   const vvUsageHelpText = Object.prototype.hasOwnProperty.call(payload, 'vvUsageHelpText')
     ? String(payload.vvUsageHelpText || '').trim()
@@ -301,45 +448,14 @@ function updateSettings(partial) {
     throw new Error('stickerUsageButtons is too long (max 10 buttons)');
   }
 
-  for (const button of buttons) {
-    if (!button.displayText) {
-      throw new Error('Button label is required');
-    }
+  buttons.forEach((button, index) => {
+    validateBuiltInButton(button, `scheduleUsageButtons[${index}]`);
+  });
 
-    if (button.displayText.length > 60) {
-      throw new Error('Button label is too long (max 60 characters)');
-    }
-
-    if (button.url.length > 2048) {
-      throw new Error('Button URL is too long (max 2048 characters)');
-    }
-
-    if (!button.url) continue;
-
-    const isAbsoluteHttpUrl = /^https?:\/\//i.test(button.url);
-    const isAbsolutePath = button.url.startsWith('/');
-    if (!isAbsoluteHttpUrl && !isAbsolutePath) {
-      throw new Error('Button URL must start with http://, https://, or /');
-    }
-  }
-
-  for (const button of [...scheduleListButtons, ...scheduleDeleteButtons, ...vvUsageButtons, ...stickerUsageButtons]) {
-    if (!button.displayText) {
-      throw new Error('Button label is required');
-    }
-    if (button.displayText.length > 60) {
-      throw new Error('Button label is too long (max 60 characters)');
-    }
-    if (button.url.length > 2048) {
-      throw new Error('Button URL is too long (max 2048 characters)');
-    }
-    if (!button.url) continue;
-    const isAbsoluteHttpUrl = /^https?:\/\//i.test(button.url);
-    const isAbsolutePath = button.url.startsWith('/');
-    if (!isAbsoluteHttpUrl && !isAbsolutePath) {
-      throw new Error('Button URL must start with http://, https://, or /');
-    }
-  }
+  [...scheduleListButtons, ...scheduleDeleteButtons, ...vvUsageButtons, ...stickerUsageButtons]
+    .forEach((button, index) => {
+      validateBuiltInButton(button, `buttons[${index}]`);
+    });
 
   const normalizedButtonsJson = JSON.stringify(buttons);
   const currentButtonsJson = JSON.stringify(settings.scheduleUsageButtons);

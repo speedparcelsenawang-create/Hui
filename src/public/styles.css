@@ -435,6 +435,148 @@ button {
   gap: 28px;
 }
 
+.profile-home-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: stretch;
+}
+
+.profile-home-hero-card,
+.profile-home-summary-card {
+  height: 100%;
+}
+
+.profile-home-hero-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 220px;
+  background:
+    radial-gradient(140% 100% at 100% 0%, color-mix(in srgb, var(--primary) 12%, transparent) 0%, transparent 62%),
+    color-mix(in srgb, var(--surface) 92%, transparent);
+  border-radius: 14px;
+}
+
+.profile-home-avatar {
+  width: 78px;
+  height: 78px;
+  border-radius: 22px;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 88%, #8be6ff), color-mix(in srgb, var(--primary) 70%, #132842));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 26px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.profile-home-avatar img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-home-avatar span {
+  position: relative;
+  z-index: 1;
+}
+
+.profile-home-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.profile-home-name {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.15;
+  word-break: break-word;
+}
+
+.profile-home-subtitle {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 13px;
+  max-width: 48ch;
+}
+
+.profile-home-connected {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--success);
+}
+
+.profile-home-connected.is-offline {
+  color: var(--muted-foreground);
+}
+
+.profile-home-connected-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--success-bg);
+  border: 1px solid color-mix(in srgb, var(--success) 40%, var(--border));
+  font-size: 12px;
+  line-height: 1;
+}
+
+.profile-home-connected.is-offline .profile-home-connected-icon {
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  border-color: color-mix(in srgb, var(--border) 85%, transparent);
+}
+
+.profile-home-summary-list {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.profile-home-summary-item {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  display: grid;
+  grid-template-columns: 112px 1fr;
+  gap: 10px;
+  align-items: center;
+}
+
+.profile-home-summary-item span {
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+
+.profile-home-summary-item strong {
+  color: var(--foreground);
+  font-size: 13px;
+  word-break: break-word;
+}
+
+.profile-home-actions {
+  margin-top: 14px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .page.page-animate .card,
 .page.page-animate .method-tabs,
 .page.page-animate .table-wrap {
@@ -722,7 +864,26 @@ body.wa-ready #wa-connected-wrap {
   font-size: 11.5px;
 }
 
-body.wa-ready #wa-qr-wrap,
+.qr-connected-banner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+#wa-qr-wrap.is-connected {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--success) 30%, var(--border));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--success-bg) 90%, transparent), color-mix(in srgb, var(--surface) 86%, transparent));
+}
+
+#wa-qr-wrap.is-connected .qr-caption {
+  color: color-mix(in srgb, var(--success) 78%, var(--foreground));
+  font-weight: 600;
+}
+
 body.wa-ready #wa-qr-empty,
 body.wa-ready #account-target-tips {
   display: none !important;
@@ -920,6 +1081,12 @@ body.wa-ready #account-target-tips {
   gap: 18px;
 }
 
+.account-settings-panel {
+  background:
+    radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, var(--primary) 8%, transparent) 0%, transparent 56%),
+    var(--card);
+}
+
 .account-settings-panel[hidden] {
   display: none;
 }
@@ -955,6 +1122,78 @@ body.wa-ready #account-target-tips {
 .account-option-list {
   display: flex;
   flex-direction: column;
+}
+
+.account-health-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.account-health-item {
+  border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+  border-radius: 12px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.account-health-label {
+  font-size: 11px;
+  color: var(--muted-foreground);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 700;
+}
+
+.account-health-value {
+  font-size: 12.5px;
+  color: var(--foreground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.account-response-scope-card {
+  margin-bottom: 14px;
+  border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
+  border-radius: 14px;
+  padding: 12px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface) 90%, transparent), color-mix(in srgb, var(--surface-2) 68%, transparent));
+}
+
+.account-response-scope-title {
+  margin: 0 0 9px;
+  font-size: 12px;
+  color: var(--muted-foreground);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.account-response-scope-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.account-response-scope-item {
+  margin: 0;
+  border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+
+.account-response-scope-item strong {
+  color: var(--foreground);
+  font-size: 12.5px;
 }
 
 #timezoneSettingSaveBtn {
@@ -1890,6 +2129,45 @@ tbody tr:hover {
   box-shadow: 0 26px 52px rgba(0, 0, 0, 0.42);
 }
 
+.command-editor-modal-panel {
+  width: min(100%, 560px);
+  padding: 0;
+  overflow: hidden;
+}
+
+.command-editor-modal-panel .schedule-detail-header {
+  padding: 18px 20px 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 84%, transparent);
+}
+
+.command-editor-modal-panel .schedule-detail-body {
+  padding: 14px 20px 12px;
+}
+
+.command-editor-modal-panel .schedule-detail-footer {
+  padding: 0 20px 18px;
+  gap: 10px;
+}
+
+.command-editor-modal-panel .command-editor-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.command-editor-modal-panel .command-editor-modal-body label {
+  margin: 2px 0 2px;
+}
+
+.command-editor-modal-panel .command-detail-popover-inline-actions {
+  margin-bottom: 8px;
+}
+
+.command-editor-modal-panel #customCommandEditButtonRows,
+.command-editor-modal-panel #builtInEditorButtonRows {
+  margin-bottom: 4px;
+}
+
 .schedule-detail-card {
   border: 1px solid color-mix(in srgb, var(--border) 86%, transparent);
   border-radius: 12px;
@@ -2535,6 +2813,10 @@ tbody tr:hover {
     grid-template-columns: 1fr;
   }
 
+  .profile-home-grid {
+    grid-template-columns: 1fr;
+  }
+
   .account-layout {
     grid-template-columns: 1fr;
   }
@@ -2553,6 +2835,22 @@ tbody tr:hover {
     width: 100%;
     border-radius: 14px;
     padding: 8px;
+  }
+
+  .command-editor-modal-panel {
+    padding: 0;
+  }
+
+  .command-editor-modal-panel .schedule-detail-header {
+    padding: 16px 16px 10px;
+  }
+
+  .command-editor-modal-panel .schedule-detail-body {
+    padding: 12px 16px 10px;
+  }
+
+  .command-editor-modal-panel .schedule-detail-footer {
+    padding: 0 16px 16px;
   }
 
   .top-nav {
@@ -2605,6 +2903,28 @@ tbody tr:hover {
     align-items: flex-start;
   }
 
+  .profile-home-hero-content {
+    min-height: 180px;
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .profile-home-avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 18px;
+    font-size: 20px;
+  }
+
+  .profile-home-name {
+    font-size: 18px;
+  }
+
+  .profile-home-summary-item {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
   .account-avatar {
     width: 46px;
     height: 46px;
@@ -2635,6 +2955,11 @@ tbody tr:hover {
   .account-option-row {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .account-health-strip,
+  .account-response-scope-grid {
+    grid-template-columns: 1fr;
   }
 
   .account-toggle-row .switch {

@@ -7,6 +7,7 @@ const DATA_FILE = path.join(DATA_DIR, 'chat-response-settings.json');
 const DEFAULT_SETTINGS = {
   personalEnabled: true,
   groupEnabled: true,
+  selfCommandEnabled: false,
 };
 
 function normalizeSettings(value) {
@@ -14,6 +15,7 @@ function normalizeSettings(value) {
   return {
     personalEnabled: source.personalEnabled !== false,
     groupEnabled: source.groupEnabled !== false,
+    selfCommandEnabled: source.selfCommandEnabled === true,
   };
 }
 
@@ -42,6 +44,7 @@ function getSettings() {
   return {
     personalEnabled: settings.personalEnabled,
     groupEnabled: settings.groupEnabled,
+    selfCommandEnabled: settings.selfCommandEnabled,
   };
 }
 
@@ -59,6 +62,13 @@ function updateSettings(partial) {
   if (Object.prototype.hasOwnProperty.call(next, 'groupEnabled') && typeof next.groupEnabled === 'boolean') {
     if (settings.groupEnabled !== next.groupEnabled) {
       settings.groupEnabled = next.groupEnabled;
+      changed = true;
+    }
+  }
+
+  if (Object.prototype.hasOwnProperty.call(next, 'selfCommandEnabled') && typeof next.selfCommandEnabled === 'boolean') {
+    if (settings.selfCommandEnabled !== next.selfCommandEnabled) {
+      settings.selfCommandEnabled = next.selfCommandEnabled;
       changed = true;
     }
   }

@@ -38,10 +38,17 @@
         <div class="sidebar-body">
           <p class="nav-group-label">Menu</p>
           <nav class="sidebar-nav">
-            <a class="nav-item active" href="#account">
+            <a class="nav-item active" href="#profile">
               <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <circle cx="12" cy="8" r="4"></circle>
                 <path d="M4 21c0-4 3.5-6 8-6s8 2 8 6"></path>
+              </svg>
+              <span>Profile</span>
+            </a>
+            <a class="nav-item" href="#account">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 3a2 2 0 0 1 2 2v1.1a6.97 6.97 0 0 1 1.8 1.05l.78-.78a2 2 0 1 1 2.83 2.83l-.78.78A6.97 6.97 0 0 1 19.9 12H21a2 2 0 1 1 0 4h-1.1a6.97 6.97 0 0 1-1.05 1.8l.78.78a2 2 0 1 1-2.83 2.83l-.78-.78A6.97 6.97 0 0 1 14 21.9V23a2 2 0 1 1-4 0v-1.1a6.97 6.97 0 0 1-1.8-1.05l-.78.78a2 2 0 1 1-2.83-2.83l.78-.78A6.97 6.97 0 0 1 4.1 16H3a2 2 0 1 1 0-4h1.1a6.97 6.97 0 0 1 1.05-1.8l-.78-.78a2 2 0 1 1 2.83-2.83l.78.78A6.97 6.97 0 0 1 10 6.1V5a2 2 0 0 1 2-2z"></path>
+                <circle cx="12" cy="14" r="3"></circle>
               </svg>
               <span>Account</span>
             </a>
@@ -97,7 +104,7 @@
               <nav class="top-nav-breadcrumb" aria-label="Breadcrumb">
                 <span class="crumb" id="breadcrumbRoot">Dashboard</span>
                 <span class="crumb-sep">/</span>
-                <span class="crumb" id="breadcrumbPage">Account</span>
+                <span class="crumb" id="breadcrumbPage">Profile</span>
                 <span class="crumb-sep" id="breadcrumbSectionSep" hidden>/</span>
                 <span class="crumb is-current" id="breadcrumbSection" hidden></span>
               </nav>
@@ -115,47 +122,52 @@
         </header>
 
         <div class="container">
-          <section class="page" data-page="account" id="account">
+          <section class="page" data-page="profile" id="profile">
+            <div class="profile-home-grid">
+              <article class="card profile-home-hero-card">
+                <div class="card-content profile-home-hero-content">
+                  <div class="profile-home-avatar" id="profileHomeAvatar" aria-hidden="true">
+                    <img id="profileHomeAvatarImage" src="<%= waState.connectedAccount?.avatarUrl || '' %>" alt="Profile avatar" referrerpolicy="no-referrer" crossorigin="anonymous" <%= waState.connectedAccount?.avatarUrl ? '' : 'hidden' %> />
+                    <span id="profileHomeAvatarFallback" <%= waState.connectedAccount?.avatarUrl ? 'hidden' : '' %>><%= (waState.connectedAccount?.displayName || 'SB').split(/\s+/).filter(Boolean).slice(0, 2).map((item) => item.charAt(0)).join('').toUpperCase() || 'SB' %></span>
+                  </div>
+                  <div class="profile-home-meta">
+                    <p class="profile-home-name" id="profileHomeName"><%= waState.connectedAccount?.displayName || 'ScheduleBot Admin' %></p>
+                    <p class="profile-home-subtitle" id="profileHomeSubtitle"><%= waState.connectedAccount?.about || 'Manage your bot profile, account settings, and command behavior.' %></p>
+                    <p class="profile-home-connected" id="profileHomeConnectedText">
+                      <span class="profile-home-connected-icon" id="profileHomeConnectedIcon">✓</span>
+                      <span id="profileHomeConnectedLabel"><%= waState.ready ? 'Connected' : 'Not connected' %></span>
+                    </p>
+                    <span class="badge <%= waState.ready ? 'badge-success' : 'badge-warning' %>" id="profileHomeConnectionBadge"><%= waState.ready ? 'Online' : 'Offline' %></span>
+                  </div>
+                </div>
+              </article>
+
+              <article class="card profile-home-summary-card">
+                <div class="card-header">
+                  <h2 class="card-title">Profile Summary</h2>
+                  <p class="card-description">Quick glance for connected WhatsApp account.</p>
+                </div>
+                <div class="card-content">
+                  <div class="profile-home-summary-list">
+                    <p class="profile-home-summary-item"><span>Display Name</span><strong id="profileHomeSummaryName"><%= waState.connectedAccount?.displayName || '-' %></strong></p>
+                    <p class="profile-home-summary-item"><span>Phone</span><strong id="profileHomeSummaryPhone"><%= waState.connectedAccount?.phoneNumber || '-' %></strong></p>
+                    <p class="profile-home-summary-item"><span>JID</span><strong id="profileHomeSummaryJid"><%= waState.connectedAccount?.jid || '-' %></strong></p>
+                  </div>
+                  <div class="profile-home-actions">
+                    <a class="btn btn-outline" href="#account">Open Account Settings</a>
+                    <a class="btn btn-outline" href="#custom-commands">Manage Commands</a>
+                  </div>
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <section class="page" data-page="account" id="account" hidden>
             <div class="account-layout">
               <aside class="card account-sidebar-card">
                 <div class="card-content account-sidebar-content">
-                  <div class="account-profile-hero">
-                    <div class="account-avatar" id="accountProfileAvatar" aria-hidden="true">
-                      <img id="accountProfileAvatarImage" alt="WhatsApp profile avatar" hidden />
-                      <span id="accountProfileAvatarFallback">SB</span>
-                    </div>
-                    <div>
-                      <p class="account-profile-name" id="accountProfileDisplayName">ScheduleBot Admin</p>
-                      <p class="account-profile-status" id="accountProfileDisplayStatus">Manage your bot profile and WhatsApp settings.</p>
-                    </div>
-                  </div>
-
-                  <div class="status-row account-status-row">
-                    <span class="badge <%= waState.ready ? 'badge-success' : 'badge-warning' %>" id="wa-status">
-                      <%= waState.status %>
-                    </span>
-                  </div>
-
-                  <form id="accountProfileForm" class="account-mini-form" autocomplete="off">
-                    <div class="field">
-                      <label for="accountProfileName">Display Name</label>
-                      <input id="accountProfileName" type="text" maxlength="60" placeholder="ScheduleBot Admin" />
-                    </div>
-                    <div class="field">
-                      <label for="accountProfileAbout">About</label>
-                      <input id="accountProfileAbout" type="text" maxlength="120" placeholder="Always online for your business" />
-                    </div>
-                    <div class="field">
-                      <label for="accountProfileEmail">Email</label>
-                      <input id="accountProfileEmail" type="email" maxlength="120" placeholder="admin@company.com" />
-                    </div>
-                    <button type="submit" class="btn btn-success btn-block" id="accountProfileSaveBtn">Save Profile</button>
-                    <p id="accountProfileFeedback" class="feedback"></p>
-                  </form>
-
                   <nav class="account-settings-nav" aria-label="Account settings">
-                    <button type="button" class="account-settings-tab active" data-account-tab="profile" data-account-label="Profile">Profile</button>
-                    <button type="button" class="account-settings-tab" data-account-tab="account" data-account-label="Account">Account</button>
+                    <button type="button" class="account-settings-tab active" data-account-tab="account" data-account-label="Account">Account</button>
                     <button type="button" class="account-settings-tab" data-account-tab="privacy" data-account-label="Privacy">Privacy</button>
                     <button type="button" class="account-settings-tab" data-account-tab="chats" data-account-label="Chats">Chats</button>
                     <button type="button" class="account-settings-tab" data-account-tab="notifications" data-account-label="Notifications">Notifications</button>
@@ -166,30 +178,7 @@
               </aside>
 
               <div class="account-settings-content">
-                <article class="card account-settings-panel" data-account-panel="profile">
-                  <div class="card-header">
-                    <h2 class="card-title">Profile</h2>
-                    <p class="card-description">Set your profile details similar to WhatsApp Edit Profile.</p>
-                  </div>
-                  <div class="card-content">
-                    <div class="account-meta-grid">
-                      <p class="account-meta-item">
-                        <span class="account-meta-label">Name</span>
-                        <span class="account-meta-value" id="accountProfilePreviewName">ScheduleBot Admin</span>
-                      </p>
-                      <p class="account-meta-item">
-                        <span class="account-meta-label">About</span>
-                        <span class="account-meta-value" id="accountProfilePreviewAbout">Always online for your business</span>
-                      </p>
-                      <p class="account-meta-item">
-                        <span class="account-meta-label">Email</span>
-                        <span class="account-meta-value" id="accountProfilePreviewEmail">-</span>
-                      </p>
-                    </div>
-                  </div>
-                </article>
-
-                <article class="card account-settings-panel" data-account-panel="account" hidden>
+                <article class="card account-settings-panel" data-account-panel="account">
                   <div class="card-header">
                     <h2 class="card-title">Account</h2>
                     <p class="card-description">Security and account access preferences.</p>
@@ -273,6 +262,15 @@
                     <p class="card-description">Set chat behavior and appearance.</p>
                   </div>
                   <div class="card-content">
+                    <div class="account-response-scope-card" aria-label="Response scope summary">
+                      <p class="account-response-scope-title">Response scope</p>
+                      <div class="account-response-scope-grid">
+                        <p class="account-response-scope-item" id="accountChatStatePersonal">Personal: <strong><%= chatResponseSettings.personalEnabled ? 'Enabled' : 'Disabled' %></strong></p>
+                        <p class="account-response-scope-item" id="accountChatStateGroup">Group: <strong><%= chatResponseSettings.groupEnabled ? 'Enabled' : 'Disabled' %></strong></p>
+                        <p class="account-response-scope-item" id="accountChatStateSelfCommand">Self Command: <strong><%= chatResponseSettings.selfCommandEnabled ? 'Enabled' : 'Disabled' %></strong></p>
+                      </div>
+                    </div>
+
                     <div class="account-option-list">
                       <div class="account-option-row account-toggle-row">
                         <div class="account-toggle-copy">
@@ -294,6 +292,17 @@
                           <input type="checkbox" id="toggleBotResponseGroup" <%= chatResponseSettings.groupEnabled ? 'checked' : '' %> />
                           <span class="switch-slider" aria-hidden="true"></span>
                           <span class="switch-label" id="toggleBotResponseGroupLabel"><%= chatResponseSettings.groupEnabled ? 'Enabled' : 'Disabled' %></span>
+                        </label>
+                      </div>
+                      <div class="account-option-row account-toggle-row">
+                        <div class="account-toggle-copy">
+                          <span>Bot response self command</span>
+                          <span class="muted">Allow bot to respond in own number chat only when message has command trigger.</span>
+                        </div>
+                        <label class="switch" for="toggleBotResponseSelfCommand">
+                          <input type="checkbox" id="toggleBotResponseSelfCommand" <%= chatResponseSettings.selfCommandEnabled ? 'checked' : '' %> />
+                          <span class="switch-slider" aria-hidden="true"></span>
+                          <span class="switch-label" id="toggleBotResponseSelfCommandLabel"><%= chatResponseSettings.selfCommandEnabled ? 'Enabled' : 'Disabled' %></span>
                         </label>
                       </div>
                       <p class="account-option-row"><span>Theme</span><span class="muted">Follow dashboard theme</span></p>
@@ -357,14 +366,19 @@
                         </div>
                       </div>
 
-                      <div id="wa-qr-wrap" class="qr-wrap linked-qr-wrap" <%= !waState.ready && waState.qrCodeDataUrl ? '' : 'hidden' %>>
+                      <div id="wa-qr-wrap" class="qr-wrap linked-qr-wrap <%= waState.ready ? 'is-connected' : '' %>" <%= waState.ready || waState.qrCodeDataUrl ? '' : 'hidden' %>>
                         <% if (waState.qrCodeDataUrl) { %>
-                        <img src="<%= waState.qrCodeDataUrl %>" alt="QR WhatsApp" class="qr" />
+                        <img src="<%= waState.qrCodeDataUrl %>" alt="QR WhatsApp" class="qr" <%= !waState.ready && waState.qrCodeDataUrl ? '' : 'hidden' %> />
                         <% } else { %>
-                        <img src="" alt="QR WhatsApp" class="qr" />
+                        <img src="" alt="QR WhatsApp" class="qr" hidden />
                         <% } %>
-                        <p id="wa-qr-caption" class="qr-caption">Scan this QR code from WhatsApp to connect the bot.</p>
-                        <ol class="qr-instructions">
+                        <div id="wa-qr-connected-banner" class="qr-connected-banner" <%= waState.ready ? '' : 'hidden' %>>
+                          <span class="connected-icon" aria-hidden="true">✓</span>
+                          <p class="connected-title">WhatsApp connected</p>
+                          <p class="connected-subtitle">Session is active. QR code is not needed right now.</p>
+                        </div>
+                        <p id="wa-qr-caption" class="qr-caption"><%= waState.ready ? 'WhatsApp already connected. QR scan is not required.' : 'Scan this QR code from WhatsApp to connect the bot.' %></p>
+                        <ol id="wa-qr-instructions" class="qr-instructions" <%= waState.ready ? 'hidden' : '' %>>
                           <li>Open WhatsApp on your phone.</li>
                           <li>Tap <strong>Settings</strong> &gt; <strong>Linked Devices</strong>.</li>
                           <li>Tap <strong>Link a Device</strong>.</li>
@@ -1009,82 +1023,78 @@
 
     <div class="modal" id="builtInCommandModal" hidden>
       <div class="modal-backdrop" data-close-modal="builtin-command"></div>
-      <div class="modal-panel schedule-view-modal-panel" role="dialog" aria-modal="true" aria-labelledby="builtInEditorTitle">
+      <div class="modal-panel schedule-view-modal-panel command-editor-modal-panel" role="dialog" aria-modal="true" aria-labelledby="builtInEditorTitle">
         <button type="button" class="modal-close" id="closeBuiltInCommandModal" aria-label="Close built-in editor">&times;</button>
-        <article class="card schedule-detail-card">
-          <header class="card-header schedule-detail-header">
-            <h3 class="card-title" id="builtInEditorTitle">Edit Built-in Command</h3>
-            <p class="card-description" id="builtInEditorDescription">Update built-in command text and behavior.</p>
-          </header>
-          <div class="card-content schedule-detail-body">
-            <div class="command-detail-popover-editor command-editor-modal-body">
-              <div id="builtInEditorButtonsSection" hidden>
-                <div class="command-detail-popover-actions command-detail-popover-inline-actions">
-                  <button type="button" class="btn btn-ghost btn-sm" id="builtInEditorAddButtonBtn">Add Button</button>
-                </div>
-                <div id="builtInEditorButtonRows"></div>
+        <header class="card-header schedule-detail-header">
+          <h3 class="card-title" id="builtInEditorTitle">Edit Built-in Command</h3>
+          <p class="card-description" id="builtInEditorDescription">Update built-in command text and behavior.</p>
+        </header>
+        <div class="card-content schedule-detail-body">
+          <div class="command-detail-popover-editor command-editor-modal-body">
+            <div id="builtInEditorButtonsSection" hidden>
+              <div class="command-detail-popover-actions command-detail-popover-inline-actions">
+                <button type="button" class="btn btn-ghost btn-sm" id="builtInEditorAddButtonBtn">Add Button</button>
               </div>
-              <label for="builtInEditorText" id="builtInEditorTextLabel">Response text</label>
-              <textarea id="builtInEditorText" rows="8"></textarea>
-              <p class="feedback" id="builtInEditorFeedback"></p>
+              <div id="builtInEditorButtonRows" class="button-rows"></div>
             </div>
+            <label for="builtInEditorText" id="builtInEditorTextLabel">Response text</label>
+            <textarea id="builtInEditorText" rows="8"></textarea>
+            <p class="feedback" id="builtInEditorFeedback"></p>
           </div>
-          <footer class="schedule-modal-actions schedule-detail-footer">
-            <button type="button" class="btn btn-outline" id="builtInEditorCancelBtn">Cancel</button>
-            <button type="button" class="btn btn-outline" id="builtInEditorSaveBtn">Save</button>
-          </footer>
-        </article>
+        </div>
+        <footer class="schedule-modal-actions schedule-detail-footer">
+          <button type="button" class="btn btn-outline" id="builtInEditorCancelBtn">Cancel</button>
+          <button type="button" class="btn btn-outline" id="builtInEditorSaveBtn">Save</button>
+        </footer>
       </div>
     </div>
 
     <div class="modal" id="customCommandEditModal" hidden>
       <div class="modal-backdrop" data-close-modal="custom-command-edit"></div>
-      <div class="modal-panel schedule-view-modal-panel" role="dialog" aria-modal="true" aria-labelledby="customCommandEditorTitle">
+      <div class="modal-panel schedule-view-modal-panel command-editor-modal-panel" role="dialog" aria-modal="true" aria-labelledby="customCommandEditorTitle">
         <button type="button" class="modal-close" id="closeCustomCommandEditModal" aria-label="Close custom command editor">&times;</button>
-        <article class="card schedule-detail-card">
-          <header class="card-header schedule-detail-header">
-            <h3 class="card-title" id="customCommandEditorTitle">Edit Custom Command</h3>
-            <p class="card-description" id="customCommandEditorDescription">Edit response, media, and buttons for this custom command.</p>
-          </header>
-          <div class="card-content schedule-detail-body">
-            <input type="hidden" id="customCommandEditOriginalTrigger" />
-            <div class="command-detail-popover-editor command-editor-modal-body">
-              <label for="customCommandEditTrigger">Trigger</label>
-              <input id="customCommandEditTrigger" type="text" readonly />
+        <header class="card-header schedule-detail-header">
+          <h3 class="card-title" id="customCommandEditorTitle">Edit Custom Command</h3>
+          <p class="card-description" id="customCommandEditorDescription">Edit response, media, and buttons for this custom command.</p>
+        </header>
+        <div class="card-content schedule-detail-body">
+          <input type="hidden" id="customCommandEditOriginalTrigger" />
+          <div class="command-detail-popover-editor command-editor-modal-body">
+            <label for="customCommandEditTrigger">Trigger</label>
+            <input id="customCommandEditTrigger" type="text" readonly />
 
-              <label for="customCommandEditMediaType">Media Type</label>
-              <select id="customCommandEditMediaType">
-                <option value="none">No media</option>
-                <% mediaTypes.forEach((type) => { %>
-                <option value="<%= type %>"><%= type %></option>
-                <% }) %>
-              </select>
+            <label for="customCommandEditMediaType">Media Type</label>
+            <select id="customCommandEditMediaType">
+              <option value="none">No media</option>
+              <% mediaTypes.forEach((type) => { %>
+              <option value="<%= type %>"><%= type %></option>
+              <% }) %>
+            </select>
 
-              <label for="customCommandEditMediaUrl">Media URL <span class="muted">(optional)</span></label>
-              <input id="customCommandEditMediaUrl" type="text" placeholder="https://..." />
+            <label for="customCommandEditMediaUrl">Media URL <span class="muted">(optional)</span></label>
+            <input id="customCommandEditMediaUrl" type="text" placeholder="https://..." />
 
-              <label for="customCommandEditFileName">File Name <span class="muted">(document only, optional)</span></label>
-              <input id="customCommandEditFileName" type="text" placeholder="brochure.pdf" />
+            <label for="customCommandEditFileName">File Name <span class="muted">(document only, optional)</span></label>
+            <input id="customCommandEditFileName" type="text" placeholder="brochure.pdf" />
 
-              <label for="customCommandEditResponse">Response Text</label>
-              <textarea id="customCommandEditResponse" rows="4" placeholder="Reply message..."></textarea>
+            <label for="customCommandEditResponse">Response Text</label>
+            <textarea id="customCommandEditResponse" rows="4" placeholder="Reply message..."></textarea>
 
-              <div class="field-head">
-                <label>Interactive Buttons <span class="muted">(optional)</span></label>
-                <div class="field-head-actions">
-                  <button type="button" class="btn btn-outline btn-sm" id="customCommandEditAddButtonBtn">Add Button</button>
-                </div>
+            <div class="field-head">
+              <label>Interactive Buttons <span class="muted">(optional)</span></label>
+              <div class="field-head-actions">
+                <button type="button" class="btn btn-outline btn-sm" id="customCommandEditAddButtonBtn">Add Button</button>
               </div>
-              <div id="customCommandEditButtonRows" class="button-rows"></div>
-
-              <p class="feedback" id="customCommandEditFeedback"></p>
             </div>
+            <div id="customCommandEditButtonRows" class="button-rows"></div>
+
+            <p class="feedback" id="customCommandEditFeedback"></p>
           </div>
-          <footer class="schedule-modal-actions schedule-detail-footer">
-            <button type="button" class="btn btn-outline" id="customCommandEditCancelBtn">Cancel</button>
-            <button type="button" class="btn btn-outline" id="customCommandEditSaveBtn">Save</button>
-          </footer>
-        </article>
+        </div>
+        <footer class="schedule-modal-actions schedule-detail-footer">
+          <button type="button" class="btn btn-outline" id="customCommandEditCancelBtn">Cancel</button>
+          <button type="button" class="btn btn-outline" id="customCommandEditSaveBtn">Save</button>
+        </footer>
       </div>
     </div>
 

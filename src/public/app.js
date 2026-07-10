@@ -22,6 +22,8 @@ const waQrWrap = document.getElementById('wa-qr-wrap');
 const waQrEmpty = document.getElementById('wa-qr-empty');
 const waQrCaption = document.getElementById('wa-qr-caption');
 const waQrImage = waQrWrap ? waQrWrap.querySelector('img.qr') : null;
+const waQrInstructions = document.getElementById('wa-qr-instructions');
+const waQrConnectedBanner = document.getElementById('wa-qr-connected-banner');
 const methodTabQr = document.getElementById('methodTabQr');
 const methodTabPhone = document.getElementById('methodTabPhone');
 const qrMethodPanel = document.getElementById('qr-method');
@@ -82,9 +84,27 @@ const commandModeSelect = document.getElementById('commandModeSelect');
 const commandModeDisplay = document.getElementById('commandModeDisplay');
 const toggleBotResponsePersonal = document.getElementById('toggleBotResponsePersonal');
 const toggleBotResponseGroup = document.getElementById('toggleBotResponseGroup');
+const toggleBotResponseSelfCommand = document.getElementById('toggleBotResponseSelfCommand');
 const toggleBotResponsePersonalLabel = document.getElementById('toggleBotResponsePersonalLabel');
 const toggleBotResponseGroupLabel = document.getElementById('toggleBotResponseGroupLabel');
+const toggleBotResponseSelfCommandLabel = document.getElementById('toggleBotResponseSelfCommandLabel');
 const botResponseSettingsFeedback = document.getElementById('botResponseSettingsFeedback');
+const accountHealthConnection = document.getElementById('accountHealthConnection');
+const accountHealthCommandMode = document.getElementById('accountHealthCommandMode');
+const accountHealthSelfCommand = document.getElementById('accountHealthSelfCommand');
+const accountChatStatePersonal = document.getElementById('accountChatStatePersonal');
+const accountChatStateGroup = document.getElementById('accountChatStateGroup');
+const accountChatStateSelfCommand = document.getElementById('accountChatStateSelfCommand');
+const profileHomeName = document.getElementById('profileHomeName');
+const profileHomeSubtitle = document.getElementById('profileHomeSubtitle');
+const profileHomeConnectionBadge = document.getElementById('profileHomeConnectionBadge');
+const profileHomeConnectedText = document.getElementById('profileHomeConnectedText');
+const profileHomeConnectedLabel = document.getElementById('profileHomeConnectedLabel');
+const profileHomeSummaryName = document.getElementById('profileHomeSummaryName');
+const profileHomeSummaryPhone = document.getElementById('profileHomeSummaryPhone');
+const profileHomeSummaryJid = document.getElementById('profileHomeSummaryJid');
+const profileHomeAvatarImage = document.getElementById('profileHomeAvatarImage');
+const profileHomeAvatarFallback = document.getElementById('profileHomeAvatarFallback');
 const sidebar = document.getElementById('sidebar');
 const sidebarOverlay = document.getElementById('sidebarOverlay');
 const sidebarMenuBtn = document.getElementById('sidebarMenuBtn');
@@ -96,13 +116,14 @@ const breadcrumbSectionSep = document.getElementById('breadcrumbSectionSep');
 const breadcrumbSection = document.getElementById('breadcrumbSection');
 const navItems = Array.from(document.querySelectorAll('.sidebar-nav .nav-item'));
 const pages = Array.from(document.querySelectorAll('.page[data-page]'));
-const DEFAULT_PAGE_HASH = '#account';
+const DEFAULT_PAGE_HASH = '#profile';
 const THEME_STORAGE_KEY = 'schedulebot-theme';
 const ACCOUNT_PROFILE_STORAGE_KEY = 'schedulebot-account-profile';
 const TIMEZONE_STORAGE_KEY = 'schedulebot-timezone';
 const DEFAULT_CHAT_RESPONSE_SETTINGS = {
   personalEnabled: true,
   groupEnabled: true,
+  selfCommandEnabled: false,
 };
 const DEFAULT_SCHEDULE_USAGE_HELP_TEXT = 'Usage:\n.schedule <time> | <message>\n\nExamples:\n.schedule 10m | Follow up pelanggan\n.schedule 2026-12-31 23:59 | Happy new year!\n\nTime format: 10m, 2h, 1d, atau YYYY-MM-DD HH:mm';
 const DEFAULT_SCHEDULE_LIST_EMPTY_TEXT = 'No schedules found for this chat.';
@@ -110,11 +131,14 @@ const DEFAULT_SCHEDULE_DELETE_USAGE_TEXT = 'Usage: .scheduledelete <id>\nExample
 const DEFAULT_VV_USAGE_HELP_TEXT = 'Reply to a "view once" image/video message with .vv to reopen it.';
 const DEFAULT_STICKER_USAGE_HELP_TEXT = 'Usage: kirim/reply gambar, video, atau sticker lalu ketik .sticker';
 const DEFAULT_SCHEDULE_USAGE_BUTTON_TEXT = 'Schedule Web';
-const DEFAULT_SCHEDULE_USAGE_BUTTON_URL = '';
 const DEFAULT_SCHEDULE_USAGE_BUTTONS = [
   {
-    displayText: DEFAULT_SCHEDULE_USAGE_BUTTON_TEXT,
-    url: DEFAULT_SCHEDULE_USAGE_BUTTON_URL,
+    name: 'cta_url',
+    buttonParamsJson: JSON.stringify({
+      display_text: DEFAULT_SCHEDULE_USAGE_BUTTON_TEXT,
+      url: '',
+      merchant_url: '',
+    }),
   },
 ];
 const schedulesById = new Map(
@@ -134,9 +158,10 @@ let chatResponseSettings = normalizeChatResponseSettings(window.__CHAT_RESPONSE_
 let accessControlSettings = normalizeAccessControlSettings(window.__ACCESS_CONTROL_SETTINGS__ || {});
 let builtInCommandSettings = normalizeBuiltInCommandSettings(window.__BUILT_IN_COMMAND_SETTINGS__ || {});
 let latestConnectedAbout = '';
-let latestConnectedAvatarUrl = '';
+let latestConnectedAvatarUrl = String(profileHomeAvatarImage?.getAttribute('src') || '').trim();
 
 const PAGE_TITLE_MAP = {
+  profile: 'Profile',
   account: 'Account',
   schedule: 'Schedule',
   'send-message': 'Send Message',
@@ -273,10 +298,43 @@ function normalizeBuiltInCommandSettings(value) {
   const normalizeButtons = (list) => list
     .map((item) => {
       if (!item || typeof item !== 'object') return null;
-      const displayText = String(item.displayText || '').trim();
-      const url = String(item.url || '').trim();
-      if (!displayText) return null;
-      return { displayText, url };
+
+      // Legacy format: { displayText, url }
+      if (!item.name && Object.prototype.hasOwnProperty.call(item, 'displayText')) {
+        const displayText = String(item.displayText || '').trim();
+        if (!displayText) return null;
+        const url = String(item.url || '').trim();
+        return {
+          name: 'cta_url',
+          buttonParamsJson: JSON.stringify({
+            display_text: displayText,
+            url,
+            merchant_url: url,
+          }),
+        };
+      }
+
+      const name = String(item.name || '').trim();
+      if (!name) return null;
+
+      let params = {};
+      if (typeof item.buttonParamsJson === 'string') {
+        try {
+          const parsed = JSON.parse(item.buttonParamsJson);
+          params = parsed && typeof parsed === 'object' ? parsed : {};
+        } catch (error) {
+          params = {};
+        }
+      } else if (item.buttonParamsJson && typeof item.buttonParamsJson === 'object') {
+        params = item.buttonParamsJson;
+      }
+
+      if (!params || typeof params !== 'object') params = {};
+
+      return {
+        name,
+        buttonParamsJson: JSON.stringify(params),
+      };
     })
     .filter(Boolean);
 
@@ -338,6 +396,25 @@ function applyAccountAvatar(displayName, avatarUrl) {
   accountProfileAvatarImage.removeAttribute('src');
   accountProfileAvatarImage.hidden = true;
   accountProfileAvatarFallback.hidden = false;
+}
+
+function applyProfileHomeAvatar(displayName, avatarUrl) {
+  if (!profileHomeAvatarImage || !profileHomeAvatarFallback) return;
+
+  const cleanName = String(displayName || '').trim();
+  const cleanAvatar = String(avatarUrl || '').trim();
+  profileHomeAvatarFallback.textContent = getInitialsFromName(cleanName);
+
+  if (cleanAvatar) {
+    profileHomeAvatarImage.src = cleanAvatar;
+    profileHomeAvatarImage.hidden = false;
+    profileHomeAvatarFallback.hidden = true;
+    return;
+  }
+
+  profileHomeAvatarImage.removeAttribute('src');
+  profileHomeAvatarImage.hidden = true;
+  profileHomeAvatarFallback.hidden = false;
 }
 
 function getDefaultTimeZone() {
@@ -506,6 +583,9 @@ function applyCommandModeUI(value) {
   if (commandModeDisplay) {
     commandModeDisplay.textContent = mode === 'private' ? 'Private' : 'Public';
   }
+  if (accountHealthCommandMode) {
+    accountHealthCommandMode.textContent = mode === 'private' ? 'Private' : 'Public';
+  }
 }
 
 function applyAccessControlUI(settings) {
@@ -635,7 +715,13 @@ function applyAccountProfileUI(profile) {
   if (accountProfilePreviewName) accountProfilePreviewName.textContent = merged.name;
   if (accountProfilePreviewAbout) accountProfilePreviewAbout.textContent = merged.about;
   if (accountProfilePreviewEmail) accountProfilePreviewEmail.textContent = merged.email || '-';
+
+  if (profileHomeName) profileHomeName.textContent = merged.name;
+  if (profileHomeSubtitle) profileHomeSubtitle.textContent = merged.about;
+  if (profileHomeSummaryName) profileHomeSummaryName.textContent = merged.name;
+
   applyAccountAvatar(merged.name, latestConnectedAvatarUrl);
+  applyProfileHomeAvatar(merged.name, latestConnectedAvatarUrl);
 }
 
 function hydrateAccountProfileUI() {
@@ -649,6 +735,7 @@ function normalizeChatResponseSettings(value) {
   return {
     personalEnabled: source.personalEnabled !== false,
     groupEnabled: source.groupEnabled !== false,
+    selfCommandEnabled: source.selfCommandEnabled === true,
   };
 }
 
@@ -674,9 +761,30 @@ function applyChatResponseSettingsUI(settings) {
     toggleBotResponseGroup.checked = normalized.groupEnabled;
     toggleBotResponseGroup.disabled = isSavingBotResponseSettings;
   }
+  if (toggleBotResponseSelfCommand) {
+    toggleBotResponseSelfCommand.checked = normalized.selfCommandEnabled;
+    toggleBotResponseSelfCommand.disabled = isSavingBotResponseSettings;
+  }
 
   setSwitchStatusLabel(toggleBotResponsePersonalLabel, normalized.personalEnabled);
   setSwitchStatusLabel(toggleBotResponseGroupLabel, normalized.groupEnabled);
+  setSwitchStatusLabel(toggleBotResponseSelfCommandLabel, normalized.selfCommandEnabled);
+
+  if (accountHealthSelfCommand) {
+    accountHealthSelfCommand.textContent = normalized.selfCommandEnabled ? 'Enabled' : 'Disabled';
+  }
+
+  if (accountChatStatePersonal) {
+    accountChatStatePersonal.innerHTML = `Personal: <strong>${normalized.personalEnabled ? 'Enabled' : 'Disabled'}</strong>`;
+  }
+
+  if (accountChatStateGroup) {
+    accountChatStateGroup.innerHTML = `Group: <strong>${normalized.groupEnabled ? 'Enabled' : 'Disabled'}</strong>`;
+  }
+
+  if (accountChatStateSelfCommand) {
+    accountChatStateSelfCommand.innerHTML = `Self Command: <strong>${normalized.selfCommandEnabled ? 'Enabled' : 'Disabled'}</strong>`;
+  }
 }
 
 async function loadChatResponseSettings() {
@@ -877,7 +985,7 @@ function hydrateScheduleTimesToLocal() {
 }
 
 function renderWhatsAppState(state) {
-  if (!state || !waStatus) return;
+  if (!state) return;
 
   const isReady = Boolean(state.ready);
   isWhatsAppReady = isReady;
@@ -890,15 +998,22 @@ function renderWhatsAppState(state) {
   const connectedNameText = String(connectedAccount.displayName || '').trim() || '-';
   const connectedAboutText = String(connectedAccount.about || '').trim();
   const connectedAvatarUrl = String(connectedAccount.avatarUrl || '').trim();
+  const effectiveAvatarUrl = connectedAvatarUrl || latestConnectedAvatarUrl;
   const connectedPhoneText = formatConnectedPhone(connectedAccount.phoneNumber);
   const connectedJidText = String(connectedAccount.jid || '').trim() || '-';
 
   latestConnectedAbout = connectedAboutText;
-  latestConnectedAvatarUrl = connectedAvatarUrl;
+  latestConnectedAvatarUrl = effectiveAvatarUrl;
 
-  waStatus.textContent = statusText;
-  waStatus.classList.remove('status-ok', 'status-warn');
-  waStatus.classList.add(isReady ? 'status-ok' : 'status-warn');
+  if (waStatus) {
+    waStatus.textContent = statusText;
+    waStatus.classList.remove('status-ok', 'status-warn');
+    waStatus.classList.add(isReady ? 'status-ok' : 'status-warn');
+  }
+
+  if (accountHealthConnection) {
+    accountHealthConnection.textContent = isReady ? 'Online' : 'Offline';
+  }
 
   if (waConnectedWrap) {
     waConnectedWrap.hidden = !isReady;
@@ -916,6 +1031,45 @@ function renderWhatsAppState(state) {
   if (waConnectedJid) {
     waConnectedJid.textContent = connectedJidText;
   }
+
+  if (profileHomeSummaryPhone) {
+    profileHomeSummaryPhone.textContent = connectedPhoneText;
+  }
+
+  if (profileHomeSummaryJid) {
+    profileHomeSummaryJid.textContent = connectedJidText;
+  }
+
+  if (profileHomeName && connectedNameText && connectedNameText !== '-') {
+    profileHomeName.textContent = connectedNameText;
+  }
+
+  if (profileHomeSummaryName && connectedNameText && connectedNameText !== '-') {
+    profileHomeSummaryName.textContent = connectedNameText;
+  }
+
+  if (profileHomeSubtitle) {
+    profileHomeSubtitle.textContent = connectedAboutText || 'Manage your bot profile, account settings, and command behavior.';
+  }
+
+  if (profileHomeConnectionBadge) {
+    profileHomeConnectionBadge.textContent = isReady ? 'Online' : 'Offline';
+    profileHomeConnectionBadge.classList.remove('badge-success', 'badge-warning');
+    profileHomeConnectionBadge.classList.add(isReady ? 'badge-success' : 'badge-warning');
+  }
+
+  if (profileHomeConnectedText) {
+    profileHomeConnectedText.classList.toggle('is-offline', !isReady);
+  }
+
+  if (profileHomeConnectedLabel) {
+    profileHomeConnectedLabel.textContent = isReady ? 'Connected' : 'Not connected';
+  }
+
+  const avatarName = connectedNameText && connectedNameText !== '-'
+    ? connectedNameText
+    : String(profileHomeName?.textContent || 'WhatsApp Account');
+  applyProfileHomeAvatar(avatarName, effectiveAvatarUrl);
 
   if (methodTabPhone) {
     methodTabPhone.disabled = isReady;
@@ -941,21 +1095,33 @@ function renderWhatsAppState(state) {
   if (waQrWrap && waQrImage && waQrEmpty) {
     if (isReady) {
       waQrImage.removeAttribute('src');
-      waQrWrap.hidden = true;
+      waQrImage.hidden = true;
+      waQrWrap.hidden = false;
+      waQrWrap.classList.add('is-connected');
+      if (waQrConnectedBanner) waQrConnectedBanner.hidden = false;
+      if (waQrInstructions) waQrInstructions.hidden = true;
       waQrEmpty.hidden = true;
       if (waQrCaption) {
-        waQrCaption.textContent = '';
+        waQrCaption.textContent = 'WhatsApp already connected. QR scan is not required.';
       }
     } else if (qrCodeDataUrl) {
       waQrImage.src = qrCodeDataUrl;
+      waQrImage.hidden = false;
       waQrWrap.hidden = false;
+      waQrWrap.classList.remove('is-connected');
+      if (waQrConnectedBanner) waQrConnectedBanner.hidden = true;
+      if (waQrInstructions) waQrInstructions.hidden = false;
       waQrEmpty.hidden = true;
       if (waQrCaption) {
         waQrCaption.textContent = 'Scan this QR code from WhatsApp to connect the bot.';
       }
     } else {
       waQrImage.removeAttribute('src');
+      waQrImage.hidden = true;
       waQrWrap.hidden = true;
+      waQrWrap.classList.remove('is-connected');
+      if (waQrConnectedBanner) waQrConnectedBanner.hidden = true;
+      if (waQrInstructions) waQrInstructions.hidden = false;
       waQrEmpty.hidden = false;
       if (waQrCaption) {
         waQrCaption.textContent = '';
@@ -1030,13 +1196,29 @@ if (methodTabPhone) {
 if (accountSettingsTabs.length) {
   accountSettingsTabs.forEach((tab) => {
     tab.addEventListener('click', () => {
-      setActiveAccountSettingsTab(tab.dataset.accountTab || 'profile');
+      setActiveAccountSettingsTab(tab.dataset.accountTab || 'account');
     });
   });
 
   const initiallyActiveAccountTab = accountSettingsTabs.find((tab) => tab.classList.contains('active'));
-  setActiveAccountSettingsTab(initiallyActiveAccountTab?.dataset.accountTab || 'profile');
+  setActiveAccountSettingsTab(initiallyActiveAccountTab?.dataset.accountTab || 'account');
 }
+
+function attachAvatarRecovery(imageElement, fallbackElement) {
+  if (!imageElement || !fallbackElement) return;
+
+  imageElement.addEventListener('error', () => {
+    imageElement.hidden = true;
+    imageElement.removeAttribute('src');
+    fallbackElement.hidden = false;
+
+    // Try to refresh latest signed profile image URL from backend state.
+    refreshWhatsAppState().catch(() => {});
+  });
+}
+
+attachAvatarRecovery(accountProfileAvatarImage, accountProfileAvatarFallback);
+attachAvatarRecovery(profileHomeAvatarImage, profileHomeAvatarFallback);
 
 if (accountProfileForm) {
   accountProfileForm.addEventListener('submit', (event) => {
@@ -1110,6 +1292,7 @@ if (toggleBotResponsePersonal) {
     saveChatResponseSettings({
       personalEnabled: desired,
       groupEnabled: chatResponseSettings.groupEnabled,
+      selfCommandEnabled: chatResponseSettings.selfCommandEnabled,
     });
   });
 }
@@ -1120,6 +1303,18 @@ if (toggleBotResponseGroup) {
     saveChatResponseSettings({
       personalEnabled: chatResponseSettings.personalEnabled,
       groupEnabled: desired,
+      selfCommandEnabled: chatResponseSettings.selfCommandEnabled,
+    });
+  });
+}
+
+if (toggleBotResponseSelfCommand) {
+  toggleBotResponseSelfCommand.addEventListener('change', () => {
+    const desired = Boolean(toggleBotResponseSelfCommand.checked);
+    saveChatResponseSettings({
+      personalEnabled: chatResponseSettings.personalEnabled,
+      groupEnabled: chatResponseSettings.groupEnabled,
+      selfCommandEnabled: desired,
     });
   });
 }
@@ -1676,12 +1871,10 @@ if (sendRefreshPersonalChatsBtn) {
   });
 }
 
-if (waStatus) {
-  refreshWhatsAppState();
-  window.setInterval(refreshWhatsAppState, 5000);
-}
+refreshWhatsAppState();
+window.setInterval(refreshWhatsAppState, 5000);
 
-if (toggleBotResponsePersonal || toggleBotResponseGroup) {
+if (toggleBotResponsePersonal || toggleBotResponseGroup || toggleBotResponseSelfCommand) {
   loadChatResponseSettings();
 }
 
@@ -3261,75 +3454,61 @@ const BUILT_IN_COMMAND_EDITOR_META = {
   },
 };
 
-function createBuiltInEditorButtonRow(button = {}, index = 0) {
-  const row = document.createElement('div');
-  row.className = 'schedule-builtin-button-row';
-  row.innerHTML = `
-    <div class="schedule-builtin-button-row-head">
-      <span class="schedule-builtin-button-row-title">Button ${index + 1}</span>
-      <button type="button" class="btn btn-ghost btn-sm">Remove</button>
-    </div>
-    <label>Interactive button label</label>
-    <input type="text" class="schedule-builtin-button-label" maxlength="60" placeholder="Schedule Web" />
-    <label>Interactive button URL</label>
-    <input type="text" class="schedule-builtin-button-url" placeholder="https://example.com/schedule atau /schedule/create" />
-  `;
-
-  const removeBtn = row.querySelector('.btn');
-  const labelInput = row.querySelector('.schedule-builtin-button-label');
-  const urlInput = row.querySelector('.schedule-builtin-button-url');
-
-  if (labelInput) {
-    labelInput.value = String(button.displayText || '').trim() || DEFAULT_SCHEDULE_USAGE_BUTTON_TEXT;
-  }
-  if (urlInput) {
-    urlInput.value = String(button.url || '').trim();
-  }
-
-  if (removeBtn) {
-    removeBtn.addEventListener('click', () => {
-      row.remove();
-      updateBuiltInEditorButtonRowTitles();
-    });
-  }
-
-  return row;
-}
-
-function updateBuiltInEditorButtonRowTitles() {
-  if (!builtInEditorButtonRows) return;
-  const rows = Array.from(builtInEditorButtonRows.querySelectorAll('.schedule-builtin-button-row'));
-  rows.forEach((row, index) => {
-    const title = row.querySelector('.schedule-builtin-button-row-title');
-    if (title) title.textContent = `Button ${index + 1}`;
-  });
-}
-
 function clearBuiltInEditorButtonRows() {
   if (!builtInEditorButtonRows) return;
   builtInEditorButtonRows.innerHTML = '';
 }
 
-function addBuiltInEditorButtonRow(button = {}) {
+function toInteractiveButton(inputButton = {}) {
+  if (!inputButton || typeof inputButton !== 'object') return null;
+
+  if (inputButton.name && inputButton.buttonParamsJson) {
+    const name = String(inputButton.name || '').trim();
+    if (!name) return null;
+
+    let params = {};
+    if (typeof inputButton.buttonParamsJson === 'string') {
+      try {
+        const parsed = JSON.parse(inputButton.buttonParamsJson);
+        params = parsed && typeof parsed === 'object' ? parsed : {};
+      } catch (error) {
+        params = {};
+      }
+    } else if (inputButton.buttonParamsJson && typeof inputButton.buttonParamsJson === 'object') {
+      params = inputButton.buttonParamsJson;
+    }
+
+    return {
+      name,
+      buttonParamsJson: JSON.stringify(params || {}),
+    };
+  }
+
+  if (Object.prototype.hasOwnProperty.call(inputButton, 'displayText')) {
+    const displayText = String(inputButton.displayText || '').trim();
+    if (!displayText) return null;
+    const url = String(inputButton.url || '').trim();
+    return {
+      name: 'cta_url',
+      buttonParamsJson: JSON.stringify({
+        display_text: displayText,
+        url,
+        merchant_url: url,
+      }),
+    };
+  }
+
+  return null;
+}
+
+function addBuiltInEditorButtonRow(button = null) {
   if (!builtInEditorButtonRows) return;
-  const nextIndex = builtInEditorButtonRows.querySelectorAll('.schedule-builtin-button-row').length;
-  builtInEditorButtonRows.appendChild(createBuiltInEditorButtonRow(button, nextIndex));
-  updateBuiltInEditorButtonRowTitles();
+  const normalized = button ? toInteractiveButton(button) : null;
+  builtInEditorButtonRows.appendChild(buttonRowTemplate(normalized || {}));
 }
 
 function collectBuiltInEditorButtons() {
-  if (!builtInEditorButtonRows) return [];
-  const rows = Array.from(builtInEditorButtonRows.querySelectorAll('.schedule-builtin-button-row'));
-  return rows
-    .map((row) => {
-      const labelInput = row.querySelector('.schedule-builtin-button-label');
-      const urlInput = row.querySelector('.schedule-builtin-button-url');
-      const displayText = String(labelInput?.value || '').trim();
-      const url = String(urlInput?.value || '').trim();
-      if (!displayText) return null;
-      return { displayText, url };
-    })
-    .filter(Boolean);
+  return collectButtonsFromRows(builtInEditorButtonRows);
 }
 
 function closeBuiltInCommandModal() {
