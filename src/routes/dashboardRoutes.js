@@ -8,6 +8,7 @@ const customCommandStore = require('../services/customCommandStore');
 const deletedMessageStore = require('../services/deletedMessageStore');
 const chatResponseSettingsStore = require('../services/chatResponseSettingsStore');
 const accessControlStore = require('../services/accessControlStore');
+const builtInCommandSettingsStore = require('../services/builtInCommandSettingsStore');
 
 const uploadDir = path.join(process.cwd(), 'uploads');
 const uploadStorage = multer.diskStorage({
@@ -72,6 +73,7 @@ function createDashboardRouter(whatsappService) {
     const deletedMessages = deletedMessageStore.listRecords();
     const chatResponseSettings = chatResponseSettingsStore.getSettings();
     const accessControlSettings = accessControlStore.getSettings();
+    const builtInCommandSettings = builtInCommandSettingsStore.getSettings();
 
     return {
       schedules,
@@ -84,6 +86,7 @@ function createDashboardRouter(whatsappService) {
       deletedMessages,
       chatResponseSettings,
       accessControlSettings,
+      builtInCommandSettings,
     };
   }
 
@@ -311,6 +314,88 @@ function createDashboardRouter(whatsappService) {
       return res.json(updated);
     } catch (error) {
       return res.status(400).json({ error: error.message || 'Failed to update chat response settings' });
+    }
+  });
+
+  router.get('/api/built-in-commands/sch-usage', (req, res) => {
+    const settings = builtInCommandSettingsStore.getSettings();
+    return res.json({
+      text: settings.scheduleUsageHelpText,
+      buttons: settings.scheduleUsageButtons,
+    });
+  });
+
+  router.get('/api/built-in-commands', (req, res) => {
+    const settings = builtInCommandSettingsStore.getSettings();
+    return res.json(settings);
+  });
+
+  router.put('/api/built-in-commands/sch-usage', (req, res) => {
+    try {
+      const payload = req.body || {};
+      const hasText = Object.prototype.hasOwnProperty.call(payload, 'text');
+      const hasButtons = Object.prototype.hasOwnProperty.call(payload, 'buttons');
+
+      if (!hasText && !hasButtons) {
+        return res.status(400).json({ error: 'text or buttons is required' });
+      }
+
+      const updated = builtInCommandSettingsStore.updateScheduleUsageSettings({
+        scheduleUsageHelpText: hasText ? payload.text : undefined,
+        scheduleUsageButtons: hasButtons ? payload.buttons : undefined,
+      });
+      return res.json({
+        text: updated.scheduleUsageHelpText,
+        buttons: updated.scheduleUsageButtons,
+      });
+    } catch (error) {
+      return res.status(400).json({ error: error.message || 'Failed to update .sch usage text' });
+    }
+  });
+
+  router.put('/api/built-in-commands', (req, res) => {
+    try {
+      const payload = req.body || {};
+      const hasScheduleText = Object.prototype.hasOwnProperty.call(payload, 'scheduleUsageHelpText');
+      const hasScheduleButtons = Object.prototype.hasOwnProperty.call(payload, 'scheduleUsageButtons');
+      const hasScheduleListEmptyText = Object.prototype.hasOwnProperty.call(payload, 'scheduleListEmptyText');
+      const hasScheduleListButtons = Object.prototype.hasOwnProperty.call(payload, 'scheduleListButtons');
+      const hasScheduleDeleteUsageText = Object.prototype.hasOwnProperty.call(payload, 'scheduleDeleteUsageText');
+      const hasScheduleDeleteButtons = Object.prototype.hasOwnProperty.call(payload, 'scheduleDeleteButtons');
+      const hasVvText = Object.prototype.hasOwnProperty.call(payload, 'vvUsageHelpText');
+      const hasVvButtons = Object.prototype.hasOwnProperty.call(payload, 'vvUsageButtons');
+      const hasStickerText = Object.prototype.hasOwnProperty.call(payload, 'stickerUsageHelpText');
+      const hasStickerButtons = Object.prototype.hasOwnProperty.call(payload, 'stickerUsageButtons');
+
+      if (!hasScheduleText
+        && !hasScheduleButtons
+        && !hasScheduleListEmptyText
+        && !hasScheduleListButtons
+        && !hasScheduleDeleteUsageText
+        && !hasScheduleDeleteButtons
+        && !hasVvText
+        && !hasVvButtons
+        && !hasStickerText
+        && !hasStickerButtons) {
+        return res.status(400).json({ error: 'At least one built-in setting field is required' });
+      }
+
+      const updated = builtInCommandSettingsStore.updateSettings({
+        scheduleUsageHelpText: hasScheduleText ? payload.scheduleUsageHelpText : undefined,
+        scheduleUsageButtons: hasScheduleButtons ? payload.scheduleUsageButtons : undefined,
+        scheduleListEmptyText: hasScheduleListEmptyText ? payload.scheduleListEmptyText : undefined,
+        scheduleListButtons: hasScheduleListButtons ? payload.scheduleListButtons : undefined,
+        scheduleDeleteUsageText: hasScheduleDeleteUsageText ? payload.scheduleDeleteUsageText : undefined,
+        scheduleDeleteButtons: hasScheduleDeleteButtons ? payload.scheduleDeleteButtons : undefined,
+        vvUsageHelpText: hasVvText ? payload.vvUsageHelpText : undefined,
+        vvUsageButtons: hasVvButtons ? payload.vvUsageButtons : undefined,
+        stickerUsageHelpText: hasStickerText ? payload.stickerUsageHelpText : undefined,
+        stickerUsageButtons: hasStickerButtons ? payload.stickerUsageButtons : undefined,
+      });
+
+      return res.json(updated);
+    } catch (error) {
+      return res.status(400).json({ error: error.message || 'Failed to update built-in command settings' });
     }
   });
 

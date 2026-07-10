@@ -1523,7 +1523,12 @@ code {
 /* ---------- Table ---------- */
 
 .table-wrap {
+  width: 100%;
+  max-width: 100%;
+  display: block;
   overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
 }
 
 table {
@@ -1622,6 +1627,11 @@ tbody tr:hover {
 .command-list-table th,
 .command-list-table td {
   text-align: center;
+}
+
+.command-list-table {
+  width: max-content;
+  min-width: 100%;
 }
 
 .command-list-table .command-content-cell {
@@ -1723,6 +1733,83 @@ tbody tr:hover {
   font-size: 12px;
   color: var(--muted-foreground);
   line-height: 1.5;
+}
+
+.command-detail-popover-pre {
+  margin-top: 8px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: inherit;
+}
+
+.command-detail-popover-actions {
+  margin: 10px 0 0;
+}
+
+.command-detail-popover-actions .btn + .btn {
+  margin-left: 8px;
+}
+
+.command-detail-popover-inline-actions {
+  margin-top: 0;
+  margin-bottom: 6px;
+}
+
+.command-detail-popover-editor {
+  margin-top: 8px;
+}
+
+.command-detail-popover-editor label {
+  display: block;
+  margin: 6px 0 4px;
+  font-size: 12px;
+}
+
+.command-detail-popover-editor input {
+  width: 100%;
+}
+
+#builtInEditorButtonRows {
+  display: grid;
+  gap: 8px;
+}
+
+.schedule-builtin-button-row {
+  padding: 8px;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  border-radius: 10px;
+}
+
+.schedule-builtin-button-row-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.schedule-builtin-button-row-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.schedule-builtin-button-row .btn {
+  min-width: auto;
+}
+
+#builtInEditorText {
+  margin-top: 8px;
+  width: 100%;
+  min-height: 130px;
+  resize: vertical;
+}
+
+#builtInEditorFeedback {
+  margin-top: 8px;
+}
+
+.command-editor-modal-body {
+  margin-top: 0;
 }
 
 .command-detail-popover[hidden] {

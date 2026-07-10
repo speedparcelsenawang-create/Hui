@@ -12,6 +12,7 @@ const customCommandStore = require('./customCommandStore');
 const deletedMessageStore = require('./deletedMessageStore');
 const chatResponseSettingsStore = require('./chatResponseSettingsStore');
 const accessControlStore = require('./accessControlStore');
+const builtInCommandSettingsStore = require('./builtInCommandSettingsStore');
 const scheduleStore = require('./scheduleStore');
 const { sendInteractiveButtons } = require('../lib/interactiveButtons');
 
@@ -69,6 +70,28 @@ function parseScheduleDateTime(raw) {
   const parsed = new Date(`${normalized}:00`);
   if (Number.isNaN(parsed.getTime())) return null;
   return parsed;
+}
+
+function buildUsageCtaButtons(settingsButtons, fallbackUrl = '') {
+  const source = Array.isArray(settingsButtons) ? settingsButtons : [];
+
+  return source
+    .map((item, index) => {
+      const displayText = String(item?.displayText || '').trim() || `Link ${index + 1}`;
+      const rawUrl = String(item?.url || '').trim();
+      const url = rawUrl || String(fallbackUrl || '').trim();
+      if (!url) return null;
+
+      return {
+        name: 'cta_url',
+        buttonParamsJson: JSON.stringify({
+          display_text: displayText,
+          url,
+          merchant_url: url,
+        }),
+      };
+    })
+    .filter(Boolean);
 }
 
 function normalizeGroupJid(value) {
@@ -1113,18 +1136,25 @@ class WhatsAppService {
     if (!this.sock) return;
 
     const scheduleShareUrl = `${getPublicBaseUrl()}/schedule/create`;
-    const usageButtons = [
-      {
-        name: 'cta_url',
-        buttonParamsJson: JSON.stringify({
-          display_text: 'Schedule Web',
-          url: scheduleShareUrl,
-          merchant_url: scheduleShareUrl,
-        }),
-      },
-    ];
+    const builtInSettings = builtInCommandSettingsStore.getSettings();
+    const normalizedButtons = (Array.isArray(builtInSettings.scheduleUsageButtons)
+      ? builtInSettings.scheduleUsageButtons
+      : []).map((item) => {
+      const rawUrl = String(item?.url || '').trim();
+      const normalizedUrl = rawUrl.startsWith('/') ? `${getPublicBaseUrl()}${rawUrl}` : rawUrl;
+      return {
+        displayText: String(item?.displayText || '').trim(),
+        url: normalizedUrl,
+      };
+    });
+    const usageButtons = buildUsageCtaButtons(normalizedButtons, scheduleShareUrl);
 
     const sendUsageHelp = async (text) => {
+      if (!usageButtons.length) {
+        await this.sock.sendMessage(chatId, { text }, { quoted: message });
+        return;
+      }
+
       await sendInteractiveButtons(
         this.sock,
         chatId,
@@ -1138,9 +1168,7 @@ class WhatsAppService {
 
     const args = stripCommandPrefix(rawText);
     if (!args) {
-      await sendUsageHelp(
-        'Usage:\n.schedule <time> | <message>\n\nExamples:\n.schedule 10m | Follow up pelanggan\n.schedule 2026-12-31 23:59 | Happy new year!\n\nTime format: 10m, 2h, 1d, atau YYYY-MM-DD HH:mm'
-      );
+      await sendUsageHelp(builtInCommandSettingsStore.getScheduleUsageHelpText());
       return;
     }
 
@@ -1246,7 +1274,21 @@ class WhatsAppService {
         .sort((a, b) => new Date(a.scheduleAt).getTime() - new Date(b.scheduleAt).getTime());
 
       if (!ownSchedules.length) {
-        await this.sock.sendMessage(chatId, { text: 'No schedules found for this chat.' }, { quoted: message });
+        const builtInSettings = builtInCommandSettingsStore.getSettings();
+        const usageButtons = buildUsageCtaButtons(builtInSettings.scheduleListButtons);
+        if (!usageButtons.length) {
+          await this.sock.sendMessage(chatId, { text: builtInSettings.scheduleListEmptyText }, { quoted: message });
+        } else {
+          await sendInteractiveButtons(
+            this.sock,
+            chatId,
+            {
+              text: builtInSettings.scheduleListEmptyText,
+              buttons: usageButtons,
+            },
+            { quoted: message }
+          );
+        }
         return;
       }
 
@@ -1285,11 +1327,25 @@ class WhatsAppService {
     const args = stripCommandPrefix(rawText);
     const id = Number(String(args || '').trim());
     if (!Number.isInteger(id) || id <= 0) {
-      await this.sock.sendMessage(
-        chatId,
-        { text: 'Usage: .scheduledelete <id>\nExample: .scheduledelete 12' },
-        { quoted: message }
-      );
+      const builtInSettings = builtInCommandSettingsStore.getSettings();
+      const usageButtons = buildUsageCtaButtons(builtInSettings.scheduleDeleteButtons);
+      if (!usageButtons.length) {
+        await this.sock.sendMessage(
+          chatId,
+          { text: builtInSettings.scheduleDeleteUsageText },
+          { quoted: message }
+        );
+      } else {
+        await sendInteractiveButtons(
+          this.sock,
+          chatId,
+          {
+            text: builtInSettings.scheduleDeleteUsageText,
+            buttons: usageButtons,
+          },
+          { quoted: message }
+        );
+      }
       return;
     }
 
@@ -1726,11 +1782,25 @@ class WhatsAppService {
 
     const target = this.resolveStickerMedia(content);
     if (!target) {
-      await this.sock.sendMessage(
-        chatId,
-        { text: 'Usage: kirim/reply gambar, video, atau sticker lalu ketik .sticker' },
-        { quoted: message }
-      );
+      const builtInSettings = builtInCommandSettingsStore.getSettings();
+      const usageButtons = buildUsageCtaButtons(builtInSettings.stickerUsageButtons);
+      if (!usageButtons.length) {
+        await this.sock.sendMessage(
+          chatId,
+          { text: builtInSettings.stickerUsageHelpText },
+          { quoted: message }
+        );
+      } else {
+        await sendInteractiveButtons(
+          this.sock,
+          chatId,
+          {
+            text: builtInSettings.stickerUsageHelpText,
+            buttons: usageButtons,
+          },
+          { quoted: message }
+        );
+      }
       return;
     }
 
@@ -1768,7 +1838,20 @@ class WhatsAppService {
           { video: buffer, fileName: 'media.mp4', caption: quotedVideo.caption || '' }
         );
       } else {
-        await this.sock.sendMessage(chatId, { text: 'Reply to a "view once" image/video message with .vv to reopen it.' });
+        const builtInSettings = builtInCommandSettingsStore.getSettings();
+        const usageButtons = buildUsageCtaButtons(builtInSettings.vvUsageButtons);
+        if (!usageButtons.length) {
+          await this.sock.sendMessage(chatId, { text: builtInSettings.vvUsageHelpText });
+        } else {
+          await sendInteractiveButtons(
+            this.sock,
+            chatId,
+            {
+              text: builtInSettings.vvUsageHelpText,
+              buttons: usageButtons,
+            }
+          );
+        }
       }
     } catch (error) {
       console.error('[WA] Failed to process .vv command:', error.message);

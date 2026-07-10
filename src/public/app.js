@@ -104,6 +104,19 @@ const DEFAULT_CHAT_RESPONSE_SETTINGS = {
   personalEnabled: true,
   groupEnabled: true,
 };
+const DEFAULT_SCHEDULE_USAGE_HELP_TEXT = 'Usage:\n.schedule <time> | <message>\n\nExamples:\n.schedule 10m | Follow up pelanggan\n.schedule 2026-12-31 23:59 | Happy new year!\n\nTime format: 10m, 2h, 1d, atau YYYY-MM-DD HH:mm';
+const DEFAULT_SCHEDULE_LIST_EMPTY_TEXT = 'No schedules found for this chat.';
+const DEFAULT_SCHEDULE_DELETE_USAGE_TEXT = 'Usage: .scheduledelete <id>\nExample: .scheduledelete 12';
+const DEFAULT_VV_USAGE_HELP_TEXT = 'Reply to a "view once" image/video message with .vv to reopen it.';
+const DEFAULT_STICKER_USAGE_HELP_TEXT = 'Usage: kirim/reply gambar, video, atau sticker lalu ketik .sticker';
+const DEFAULT_SCHEDULE_USAGE_BUTTON_TEXT = 'Schedule Web';
+const DEFAULT_SCHEDULE_USAGE_BUTTON_URL = '';
+const DEFAULT_SCHEDULE_USAGE_BUTTONS = [
+  {
+    displayText: DEFAULT_SCHEDULE_USAGE_BUTTON_TEXT,
+    url: DEFAULT_SCHEDULE_USAGE_BUTTON_URL,
+  },
+];
 const schedulesById = new Map(
   (Array.isArray(window.__SCHEDULES__) ? window.__SCHEDULES__ : []).map((item) => [
     String(item.id),
@@ -119,6 +132,7 @@ let isWhatsAppReady = false;
 let isSavingBotResponseSettings = false;
 let chatResponseSettings = normalizeChatResponseSettings(window.__CHAT_RESPONSE_SETTINGS__ || DEFAULT_CHAT_RESPONSE_SETTINGS);
 let accessControlSettings = normalizeAccessControlSettings(window.__ACCESS_CONTROL_SETTINGS__ || {});
+let builtInCommandSettings = normalizeBuiltInCommandSettings(window.__BUILT_IN_COMMAND_SETTINGS__ || {});
 let latestConnectedAbout = '';
 let latestConnectedAvatarUrl = '';
 
@@ -236,6 +250,62 @@ function getConnectedAccountNameText() {
   const rawName = String(waConnectedName?.textContent || '').trim();
   if (!rawName || rawName === '-') return '';
   return rawName;
+}
+
+function normalizeBuiltInCommandSettings(value) {
+  const source = value && typeof value === 'object' ? value : {};
+  const hasScheduleButtonsArray = Object.prototype.hasOwnProperty.call(source, 'scheduleUsageButtons');
+  const hasScheduleListButtonsArray = Object.prototype.hasOwnProperty.call(source, 'scheduleListButtons');
+  const hasScheduleDeleteButtonsArray = Object.prototype.hasOwnProperty.call(source, 'scheduleDeleteButtons');
+  const hasVvButtonsArray = Object.prototype.hasOwnProperty.call(source, 'vvUsageButtons');
+  const hasStickerButtonsArray = Object.prototype.hasOwnProperty.call(source, 'stickerUsageButtons');
+  const scheduleUsageHelpText = String(source.scheduleUsageHelpText || '').trim();
+  const scheduleListEmptyText = String(source.scheduleListEmptyText || '').trim();
+  const scheduleDeleteUsageText = String(source.scheduleDeleteUsageText || '').trim();
+  const vvUsageHelpText = String(source.vvUsageHelpText || '').trim();
+  const stickerUsageHelpText = String(source.stickerUsageHelpText || '').trim();
+  const rawScheduleButtons = Array.isArray(source.scheduleUsageButtons) ? source.scheduleUsageButtons : [];
+  const rawScheduleListButtons = Array.isArray(source.scheduleListButtons) ? source.scheduleListButtons : [];
+  const rawScheduleDeleteButtons = Array.isArray(source.scheduleDeleteButtons) ? source.scheduleDeleteButtons : [];
+  const rawVvButtons = Array.isArray(source.vvUsageButtons) ? source.vvUsageButtons : [];
+  const rawStickerButtons = Array.isArray(source.stickerUsageButtons) ? source.stickerUsageButtons : [];
+
+  const normalizeButtons = (list) => list
+    .map((item) => {
+      if (!item || typeof item !== 'object') return null;
+      const displayText = String(item.displayText || '').trim();
+      const url = String(item.url || '').trim();
+      if (!displayText) return null;
+      return { displayText, url };
+    })
+    .filter(Boolean);
+
+  const scheduleUsageButtons = normalizeButtons(rawScheduleButtons);
+  const scheduleListButtons = normalizeButtons(rawScheduleListButtons);
+  const scheduleDeleteButtons = normalizeButtons(rawScheduleDeleteButtons);
+  const vvUsageButtons = normalizeButtons(rawVvButtons);
+  const stickerUsageButtons = normalizeButtons(rawStickerButtons);
+
+  return {
+    scheduleUsageHelpText: scheduleUsageHelpText || DEFAULT_SCHEDULE_USAGE_HELP_TEXT,
+    scheduleListEmptyText: scheduleListEmptyText || DEFAULT_SCHEDULE_LIST_EMPTY_TEXT,
+    scheduleDeleteUsageText: scheduleDeleteUsageText || DEFAULT_SCHEDULE_DELETE_USAGE_TEXT,
+    vvUsageHelpText: vvUsageHelpText || DEFAULT_VV_USAGE_HELP_TEXT,
+    stickerUsageHelpText: stickerUsageHelpText || DEFAULT_STICKER_USAGE_HELP_TEXT,
+    scheduleUsageButtons: hasScheduleButtonsArray
+      ? scheduleUsageButtons
+      : DEFAULT_SCHEDULE_USAGE_BUTTONS.map((item) => ({ ...item })),
+    scheduleListButtons: hasScheduleListButtonsArray ? scheduleListButtons : [],
+    scheduleDeleteButtons: hasScheduleDeleteButtonsArray ? scheduleDeleteButtons : [],
+    vvUsageButtons: hasVvButtonsArray ? vvUsageButtons : [],
+    stickerUsageButtons: hasStickerButtonsArray ? stickerUsageButtons : [],
+  };
+}
+
+function applyBuiltInCommandSettingsUI() {
+  const usageEl = document.getElementById('scheduleBuiltinUsageText');
+  if (!usageEl) return;
+  usageEl.textContent = builtInCommandSettings.scheduleUsageHelpText;
 }
 
 function getConnectedAccountAboutText() {
@@ -1976,8 +2046,6 @@ const commandFeedback = document.getElementById('command-feedback');
 const commandAdvancedFields = document.getElementById('command-advanced-fields');
 const commandTriggerInput = document.getElementById('commandTrigger');
 const commandMediaTypeInput = document.getElementById('commandMediaType');
-const commandCategoryInput = document.getElementById('commandCategory');
-const commandDescriptionInput = document.getElementById('commandDescription');
 const commandResponseInput = document.getElementById('commandResponse');
 const commandMediaSourceInput = document.getElementById('commandMediaSource');
 const commandMediaUrlInput = document.getElementById('commandMediaUrl');
@@ -1990,9 +2058,7 @@ const commandMediaUploadField = document.getElementById('commandMediaUploadField
 const commandFileNameField = document.getElementById('commandFileNameField');
 const commandResponseRuleHint = document.getElementById('commandResponseRuleHint');
 const commandMediaSourceTabs = Array.from(document.querySelectorAll('[data-command-media-source]'));
-const commandOriginalTrigger = document.getElementById('commandOriginalTrigger');
 const commandSubmitBtn = document.getElementById('commandSubmitBtn');
-const commandCancelBtn = document.getElementById('commandCancelBtn');
 const addButtonRowBtn = document.getElementById('addButtonRowBtn');
 const openButtonSetupGuideBtn = document.getElementById('openButtonSetupGuideBtn');
 const buttonRows = document.getElementById('buttonRows');
@@ -2252,10 +2318,10 @@ function parseSingleSelectRowsInput(rawValue, fallbackTitle) {
   return [{ id: cleanValue, title: cleanTitle }];
 }
 
-function collectButtonsFromRows() {
-  if (!buttonRows) return [];
+function collectButtonsFromRows(targetRows = buttonRows) {
+  if (!targetRows) return [];
 
-  return Array.from(buttonRows.querySelectorAll('.button-row'))
+  return Array.from(targetRows.querySelectorAll('.button-row'))
     .map((row) => {
       const type = row.querySelector('.btn-type-select').value;
       const label = row.querySelector('.btn-label-input').value.trim();
@@ -2489,10 +2555,8 @@ function resetCommandForm() {
   if (!commandForm) return;
   commandForm.reset();
   clearButtonRows();
-  if (commandOriginalTrigger) commandOriginalTrigger.value = '';
   if (commandTriggerInput) commandTriggerInput.disabled = false;
   if (commandSubmitBtn) commandSubmitBtn.textContent = 'Save Command';
-  if (commandCancelBtn) commandCancelBtn.hidden = true;
   if (commandMediaSourceInput) commandMediaSourceInput.value = 'url';
   setCommandFeedback('');
   updateCommandFormFlow();
@@ -2504,44 +2568,6 @@ function normalizeCommandTrigger(value) {
   const withoutPrefix = raw.replace(/^[!.]+/, '').trim();
   if (!withoutPrefix) return '.';
   return `.${withoutPrefix}`;
-}
-
-function fillCommandForm(command) {
-  if (!commandForm || !command) return;
-
-  if (commandTriggerInput) commandTriggerInput.value = normalizeCommandTrigger(command.trigger || '');
-  if (commandCategoryInput) commandCategoryInput.value = command.category || 'General';
-  if (commandDescriptionInput) commandDescriptionInput.value = command.description || '';
-  if (commandResponseInput) commandResponseInput.value = command.response || '';
-  if (commandMediaTypeInput) commandMediaTypeInput.value = command.mediaType || 'none';
-  if (commandMediaSourceInput) {
-    commandMediaSourceInput.value = command.mediaUrl ? 'url' : 'upload';
-  }
-  if (commandMediaUrlInput) commandMediaUrlInput.value = command.mediaUrl || '';
-  if (commandFileNameInput) commandFileNameInput.value = command.fileName || '';
-
-  clearButtonRows();
-  (command.buttons || []).forEach((button) => addButtonRow(button));
-
-  if (commandOriginalTrigger) commandOriginalTrigger.value = command.trigger || '';
-  if (commandTriggerInput) commandTriggerInput.disabled = true;
-  if (commandSubmitBtn) commandSubmitBtn.textContent = 'Update Command';
-  if (commandCancelBtn) commandCancelBtn.hidden = false;
-  updateCommandFormFlow();
-
-  setTabbedPanel(
-    'create',
-    { create: commandTabCreate, list: commandTabList },
-    { create: commandCreatePanel, list: commandListPanel }
-  );
-
-  window.history.pushState(null, '', '#custom-commands');
-  showPageByHash('#custom-commands');
-  commandForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
-if (commandCancelBtn) {
-  commandCancelBtn.addEventListener('click', resetCommandForm);
 }
 
 if (commandTriggerInput) {
@@ -2607,8 +2633,6 @@ if (commandForm) {
     const submitBtn = commandSubmitBtn || commandForm.querySelector('button[type="submit"]');
 
     const formData = new FormData(commandForm);
-    const originalTrigger = commandOriginalTrigger ? commandOriginalTrigger.value : '';
-    const isEditing = Boolean(originalTrigger);
     const selectedMediaType = String(formData.get('mediaType') || '').trim();
     const selectedMediaSource = String(formData.get('mediaSource') || 'url').trim();
 
@@ -2629,8 +2653,6 @@ if (commandForm) {
 
     const payload = {
       trigger: normalizeCommandTrigger(formData.get('trigger') || ''),
-      category: String(formData.get('category') || '').trim(),
-      description: String(formData.get('description') || '').trim(),
       response: String(formData.get('response') || '').trim(),
       mediaType: getNormalizedMediaType(),
       mediaUrl,
@@ -2638,17 +2660,12 @@ if (commandForm) {
       buttons: collectButtonsFromRows(),
     };
 
-    setCommandFeedback(isEditing ? 'Updating command...' : 'Saving command...', '#5d645d');
-    setButtonLoading(submitBtn, true, isEditing ? 'Updating command' : 'Saving command');
+    setCommandFeedback('Saving command...', '#5d645d');
+    setButtonLoading(submitBtn, true, 'Saving command');
 
     try {
-      const url = isEditing
-        ? `/api/custom-commands/${encodeURIComponent(originalTrigger)}`
-        : '/api/custom-commands';
-      const method = isEditing ? 'PUT' : 'POST';
-
-      const response = await fetch(url, {
-        method,
+      const response = await fetch('/api/custom-commands', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
@@ -2658,7 +2675,7 @@ if (commandForm) {
         throw new Error(data.error || 'Failed to save command');
       }
 
-      setCommandFeedback(isEditing ? 'Command updated' : 'Command saved', '#136f63');
+      setCommandFeedback('Command saved', '#136f63');
       setTimeout(() => window.location.reload(), 350);
     } catch (error) {
       setCommandFeedback(error.message, '#b42318');
@@ -3032,17 +3049,144 @@ document.addEventListener('click', (event) => {
   closeCommandDetailPopovers();
 });
 
-document.querySelectorAll('.btn-edit-command').forEach((button) => {
+const customCommandEditModal = document.getElementById('customCommandEditModal');
+const closeCustomCommandEditModalBtn = document.getElementById('closeCustomCommandEditModal');
+const customCommandEditOriginalTriggerInput = document.getElementById('customCommandEditOriginalTrigger');
+const customCommandEditTriggerInput = document.getElementById('customCommandEditTrigger');
+const customCommandEditMediaTypeInput = document.getElementById('customCommandEditMediaType');
+const customCommandEditMediaUrlInput = document.getElementById('customCommandEditMediaUrl');
+const customCommandEditFileNameInput = document.getElementById('customCommandEditFileName');
+const customCommandEditResponseInput = document.getElementById('customCommandEditResponse');
+const customCommandEditAddButtonBtn = document.getElementById('customCommandEditAddButtonBtn');
+const customCommandEditButtonRows = document.getElementById('customCommandEditButtonRows');
+const customCommandEditFeedback = document.getElementById('customCommandEditFeedback');
+const customCommandEditCancelBtn = document.getElementById('customCommandEditCancelBtn');
+const customCommandEditSaveBtn = document.getElementById('customCommandEditSaveBtn');
+
+function addCustomCommandEditButtonRow(button) {
+  if (!customCommandEditButtonRows) return;
+  customCommandEditButtonRows.appendChild(buttonRowTemplate(button));
+}
+
+function clearCustomCommandEditButtonRows() {
+  if (!customCommandEditButtonRows) return;
+  customCommandEditButtonRows.innerHTML = '';
+}
+
+function closeCustomCommandEditModal() {
+  if (customCommandEditModal) {
+    customCommandEditModal.hidden = true;
+  }
+  if (customCommandEditFeedback) {
+    customCommandEditFeedback.textContent = '';
+    customCommandEditFeedback.style.color = '#5d645d';
+  }
+  syncModalBodyScrollLock();
+}
+
+function openCustomCommandEditModal(trigger) {
+  const key = String(trigger || '').trim();
+  if (!key) return;
+
+  const command = commandsByTrigger.get(key);
+  if (!command) return;
+
+  if (customCommandEditOriginalTriggerInput) customCommandEditOriginalTriggerInput.value = key;
+  if (customCommandEditTriggerInput) customCommandEditTriggerInput.value = key;
+  if (customCommandEditMediaTypeInput) customCommandEditMediaTypeInput.value = command.mediaType || 'none';
+  if (customCommandEditMediaUrlInput) customCommandEditMediaUrlInput.value = command.mediaUrl || '';
+  if (customCommandEditFileNameInput) customCommandEditFileNameInput.value = command.fileName || '';
+  if (customCommandEditResponseInput) customCommandEditResponseInput.value = command.response || '';
+  clearCustomCommandEditButtonRows();
+  const list = Array.isArray(command.buttons) ? command.buttons : [];
+  list.forEach((button) => addCustomCommandEditButtonRow(button));
+  if (customCommandEditFeedback) {
+    customCommandEditFeedback.textContent = '';
+    customCommandEditFeedback.style.color = '#5d645d';
+  }
+
+  if (customCommandEditModal) {
+    customCommandEditModal.hidden = false;
+  }
+  syncModalBodyScrollLock();
+  customCommandEditResponseInput?.focus();
+}
+
+if (customCommandEditAddButtonBtn) {
+  customCommandEditAddButtonBtn.addEventListener('click', () => {
+    addCustomCommandEditButtonRow();
+  });
+}
+
+document.querySelectorAll('.btn-edit-command-modal').forEach((button) => {
   button.addEventListener('click', () => {
-    const trigger = button.dataset.trigger;
-    if (!trigger) return;
-
-    const command = commandsByTrigger.get(trigger);
-    if (!command) return;
-
-    fillCommandForm(command);
+    openCustomCommandEditModal(button.dataset.trigger);
   });
 });
+
+if (customCommandEditCancelBtn) {
+  customCommandEditCancelBtn.addEventListener('click', closeCustomCommandEditModal);
+}
+
+if (closeCustomCommandEditModalBtn) {
+  closeCustomCommandEditModalBtn.addEventListener('click', closeCustomCommandEditModal);
+}
+
+if (customCommandEditModal) {
+  customCommandEditModal.addEventListener('click', (event) => {
+    if (event.target instanceof HTMLElement && event.target.dataset.closeModal === 'custom-command-edit') {
+      closeCustomCommandEditModal();
+    }
+  });
+}
+
+if (customCommandEditSaveBtn) {
+  customCommandEditSaveBtn.addEventListener('click', async () => {
+    const originalTrigger = String(customCommandEditOriginalTriggerInput?.value || '').trim();
+    if (!originalTrigger) return;
+
+    const responseText = String(customCommandEditResponseInput?.value || '').trim();
+    const mediaType = String(customCommandEditMediaTypeInput?.value || '').trim();
+    const mediaUrl = String(customCommandEditMediaUrlInput?.value || '').trim();
+    const fileName = String(customCommandEditFileNameInput?.value || '').trim();
+    const buttons = collectButtonsFromRows(customCommandEditButtonRows);
+
+    const payload = {
+      response: responseText,
+      mediaType: mediaType && mediaType !== 'none' ? mediaType : '',
+      mediaUrl,
+      fileName,
+      buttons,
+    };
+
+    setButtonLoading(customCommandEditSaveBtn, true, 'Updating command');
+    if (customCommandEditFeedback) {
+      customCommandEditFeedback.textContent = 'Saving...';
+      customCommandEditFeedback.style.color = '#5d645d';
+    }
+
+    try {
+      const response = await fetch(`/api/custom-commands/${encodeURIComponent(originalTrigger)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update command');
+      }
+
+      window.location.reload();
+    } catch (error) {
+      if (customCommandEditFeedback) {
+        customCommandEditFeedback.textContent = error.message || 'Failed to update command';
+        customCommandEditFeedback.style.color = '#b42318';
+      }
+      setButtonLoading(customCommandEditSaveBtn, false);
+    }
+  });
+}
 
 document.querySelectorAll('.btn-delete-command').forEach((button) => {
   button.addEventListener('click', async () => {
@@ -3074,6 +3218,326 @@ document.querySelectorAll('.btn-delete-command').forEach((button) => {
   });
 });
 
+const builtInCommandModal = document.getElementById('builtInCommandModal');
+const closeBuiltInCommandModalBtn = document.getElementById('closeBuiltInCommandModal');
+const builtInEditorTitle = document.getElementById('builtInEditorTitle');
+const builtInEditorDescription = document.getElementById('builtInEditorDescription');
+const builtInEditorTextLabel = document.getElementById('builtInEditorTextLabel');
+const builtInEditorText = document.getElementById('builtInEditorText');
+const builtInEditorFeedback = document.getElementById('builtInEditorFeedback');
+const builtInEditorButtonsSection = document.getElementById('builtInEditorButtonsSection');
+const builtInEditorButtonRows = document.getElementById('builtInEditorButtonRows');
+const builtInEditorAddButtonBtn = document.getElementById('builtInEditorAddButtonBtn');
+const builtInEditorCancelBtn = document.getElementById('builtInEditorCancelBtn');
+const builtInEditorSaveBtn = document.getElementById('builtInEditorSaveBtn');
+
+let activeBuiltInCommandKey = '';
+
+const BUILT_IN_COMMAND_EDITOR_META = {
+  sch: {
+    title: 'Edit .sch',
+    description: 'Update usage/help text and interactive buttons for schedule command.',
+    textLabel: 'Usage/help text',
+  },
+  schlist: {
+    title: 'Edit .schlist',
+    description: 'Update message shown when no schedules are found for current chat.',
+    textLabel: 'Empty list message',
+  },
+  schdel: {
+    title: 'Edit .schdel',
+    description: 'Update usage/help text shown when schedule delete format is invalid.',
+    textLabel: 'Usage/help text',
+  },
+  vv: {
+    title: 'Edit .vv',
+    description: 'Update help text shown when .vv is used without valid quoted view-once media.',
+    textLabel: 'Help text',
+  },
+  sticker: {
+    title: 'Edit .sticker',
+    description: 'Update usage/help text shown when .sticker is used without media.',
+    textLabel: 'Help text',
+  },
+};
+
+function createBuiltInEditorButtonRow(button = {}, index = 0) {
+  const row = document.createElement('div');
+  row.className = 'schedule-builtin-button-row';
+  row.innerHTML = `
+    <div class="schedule-builtin-button-row-head">
+      <span class="schedule-builtin-button-row-title">Button ${index + 1}</span>
+      <button type="button" class="btn btn-ghost btn-sm">Remove</button>
+    </div>
+    <label>Interactive button label</label>
+    <input type="text" class="schedule-builtin-button-label" maxlength="60" placeholder="Schedule Web" />
+    <label>Interactive button URL</label>
+    <input type="text" class="schedule-builtin-button-url" placeholder="https://example.com/schedule atau /schedule/create" />
+  `;
+
+  const removeBtn = row.querySelector('.btn');
+  const labelInput = row.querySelector('.schedule-builtin-button-label');
+  const urlInput = row.querySelector('.schedule-builtin-button-url');
+
+  if (labelInput) {
+    labelInput.value = String(button.displayText || '').trim() || DEFAULT_SCHEDULE_USAGE_BUTTON_TEXT;
+  }
+  if (urlInput) {
+    urlInput.value = String(button.url || '').trim();
+  }
+
+  if (removeBtn) {
+    removeBtn.addEventListener('click', () => {
+      row.remove();
+      updateBuiltInEditorButtonRowTitles();
+    });
+  }
+
+  return row;
+}
+
+function updateBuiltInEditorButtonRowTitles() {
+  if (!builtInEditorButtonRows) return;
+  const rows = Array.from(builtInEditorButtonRows.querySelectorAll('.schedule-builtin-button-row'));
+  rows.forEach((row, index) => {
+    const title = row.querySelector('.schedule-builtin-button-row-title');
+    if (title) title.textContent = `Button ${index + 1}`;
+  });
+}
+
+function clearBuiltInEditorButtonRows() {
+  if (!builtInEditorButtonRows) return;
+  builtInEditorButtonRows.innerHTML = '';
+}
+
+function addBuiltInEditorButtonRow(button = {}) {
+  if (!builtInEditorButtonRows) return;
+  const nextIndex = builtInEditorButtonRows.querySelectorAll('.schedule-builtin-button-row').length;
+  builtInEditorButtonRows.appendChild(createBuiltInEditorButtonRow(button, nextIndex));
+  updateBuiltInEditorButtonRowTitles();
+}
+
+function collectBuiltInEditorButtons() {
+  if (!builtInEditorButtonRows) return [];
+  const rows = Array.from(builtInEditorButtonRows.querySelectorAll('.schedule-builtin-button-row'));
+  return rows
+    .map((row) => {
+      const labelInput = row.querySelector('.schedule-builtin-button-label');
+      const urlInput = row.querySelector('.schedule-builtin-button-url');
+      const displayText = String(labelInput?.value || '').trim();
+      const url = String(urlInput?.value || '').trim();
+      if (!displayText) return null;
+      return { displayText, url };
+    })
+    .filter(Boolean);
+}
+
+function closeBuiltInCommandModal() {
+  activeBuiltInCommandKey = '';
+  if (builtInCommandModal) {
+    builtInCommandModal.hidden = true;
+  }
+  syncModalBodyScrollLock();
+}
+
+function openBuiltInCommandModal(commandKey) {
+  const key = String(commandKey || '').trim().toLowerCase();
+  if (!BUILT_IN_COMMAND_EDITOR_META[key]) return;
+
+  activeBuiltInCommandKey = key;
+  const meta = BUILT_IN_COMMAND_EDITOR_META[key];
+  if (builtInEditorTitle) builtInEditorTitle.textContent = meta.title;
+  if (builtInEditorDescription) builtInEditorDescription.textContent = meta.description;
+  if (builtInEditorTextLabel) builtInEditorTextLabel.textContent = meta.textLabel;
+
+  if (builtInEditorFeedback) {
+    builtInEditorFeedback.textContent = '';
+    builtInEditorFeedback.style.color = '#5d645d';
+  }
+
+  if (key === 'sch') {
+    if (builtInEditorText) {
+      builtInEditorText.value = String(builtInCommandSettings.scheduleUsageHelpText || '').trim() || DEFAULT_SCHEDULE_USAGE_HELP_TEXT;
+    }
+  } else if (key === 'schlist') {
+    if (builtInEditorText) {
+      builtInEditorText.value = String(builtInCommandSettings.scheduleListEmptyText || '').trim() || DEFAULT_SCHEDULE_LIST_EMPTY_TEXT;
+    }
+  } else if (key === 'schdel') {
+    if (builtInEditorText) {
+      builtInEditorText.value = String(builtInCommandSettings.scheduleDeleteUsageText || '').trim() || DEFAULT_SCHEDULE_DELETE_USAGE_TEXT;
+    }
+  } else if (key === 'vv') {
+    if (builtInEditorText) {
+      builtInEditorText.value = String(builtInCommandSettings.vvUsageHelpText || '').trim() || DEFAULT_VV_USAGE_HELP_TEXT;
+    }
+  } else if (key === 'sticker') {
+    if (builtInEditorText) {
+      builtInEditorText.value = String(builtInCommandSettings.stickerUsageHelpText || '').trim() || DEFAULT_STICKER_USAGE_HELP_TEXT;
+    }
+  }
+
+  if (builtInEditorButtonsSection) builtInEditorButtonsSection.hidden = false;
+  clearBuiltInEditorButtonRows();
+
+  const buttonsByKey = {
+    sch: builtInCommandSettings.scheduleUsageButtons,
+    schlist: builtInCommandSettings.scheduleListButtons,
+    schdel: builtInCommandSettings.scheduleDeleteButtons,
+    vv: builtInCommandSettings.vvUsageButtons,
+    sticker: builtInCommandSettings.stickerUsageButtons,
+  };
+  const activeButtons = Array.isArray(buttonsByKey[key]) ? buttonsByKey[key] : [];
+  activeButtons.forEach((button) => addBuiltInEditorButtonRow(button));
+
+  if (builtInCommandModal) {
+    builtInCommandModal.hidden = false;
+  }
+  syncModalBodyScrollLock();
+  builtInEditorText?.focus();
+}
+
+if (builtInEditorAddButtonBtn) {
+  builtInEditorAddButtonBtn.addEventListener('click', () => {
+    addBuiltInEditorButtonRow();
+  });
+}
+
+document.querySelectorAll('.btn-edit-builtin-command').forEach((button) => {
+  button.addEventListener('click', () => {
+    openBuiltInCommandModal(button.dataset.builtinCommand || '');
+  });
+});
+
+if (builtInEditorCancelBtn) {
+  builtInEditorCancelBtn.addEventListener('click', closeBuiltInCommandModal);
+}
+
+if (closeBuiltInCommandModalBtn) {
+  closeBuiltInCommandModalBtn.addEventListener('click', closeBuiltInCommandModal);
+}
+
+if (builtInCommandModal) {
+  builtInCommandModal.addEventListener('click', (event) => {
+    if (event.target instanceof HTMLElement && event.target.dataset.closeModal === 'builtin-command') {
+      closeBuiltInCommandModal();
+    }
+  });
+}
+
+if (builtInEditorSaveBtn) {
+  builtInEditorSaveBtn.addEventListener('click', async () => {
+    const key = activeBuiltInCommandKey;
+    if (!key) return;
+
+    const text = String(builtInEditorText?.value || '').trim();
+    if (!text) {
+      if (builtInEditorFeedback) {
+        builtInEditorFeedback.textContent = 'Text tidak boleh kosong.';
+        builtInEditorFeedback.style.color = '#b42318';
+      }
+      return;
+    }
+
+    const payload = {};
+    if (key === 'sch') {
+      const buttons = collectBuiltInEditorButtons();
+      if (buttons.length > 10) {
+        if (builtInEditorFeedback) {
+          builtInEditorFeedback.textContent = 'Maksimum 10 button untuk .sch.';
+          builtInEditorFeedback.style.color = '#b42318';
+        }
+        return;
+      }
+      payload.scheduleUsageHelpText = text;
+      payload.scheduleUsageButtons = buttons;
+    }
+
+    if (key === 'schlist') {
+      const buttons = collectBuiltInEditorButtons();
+      if (buttons.length > 10) {
+        if (builtInEditorFeedback) {
+          builtInEditorFeedback.textContent = 'Maksimum 10 button untuk .schlist.';
+          builtInEditorFeedback.style.color = '#b42318';
+        }
+        return;
+      }
+      payload.scheduleListEmptyText = text;
+      payload.scheduleListButtons = buttons;
+    }
+
+    if (key === 'schdel') {
+      const buttons = collectBuiltInEditorButtons();
+      if (buttons.length > 10) {
+        if (builtInEditorFeedback) {
+          builtInEditorFeedback.textContent = 'Maksimum 10 button untuk .schdel.';
+          builtInEditorFeedback.style.color = '#b42318';
+        }
+        return;
+      }
+      payload.scheduleDeleteUsageText = text;
+      payload.scheduleDeleteButtons = buttons;
+    }
+
+    if (key === 'vv') {
+      const buttons = collectBuiltInEditorButtons();
+      if (buttons.length > 10) {
+        if (builtInEditorFeedback) {
+          builtInEditorFeedback.textContent = 'Maksimum 10 button untuk .vv.';
+          builtInEditorFeedback.style.color = '#b42318';
+        }
+        return;
+      }
+      payload.vvUsageHelpText = text;
+      payload.vvUsageButtons = buttons;
+    }
+
+    if (key === 'sticker') {
+      const buttons = collectBuiltInEditorButtons();
+      if (buttons.length > 10) {
+        if (builtInEditorFeedback) {
+          builtInEditorFeedback.textContent = 'Maksimum 10 button untuk .sticker.';
+          builtInEditorFeedback.style.color = '#b42318';
+        }
+        return;
+      }
+      payload.stickerUsageHelpText = text;
+      payload.stickerUsageButtons = buttons;
+    }
+
+    setButtonLoading(builtInEditorSaveBtn, true, 'Saving built-in command');
+    if (builtInEditorFeedback) {
+      builtInEditorFeedback.textContent = 'Saving...';
+      builtInEditorFeedback.style.color = '#5d645d';
+    }
+
+    try {
+      const response = await fetch('/api/built-in-commands', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update built-in command');
+      }
+
+      builtInCommandSettings = normalizeBuiltInCommandSettings(data);
+      applyBuiltInCommandSettingsUI();
+      closeBuiltInCommandModal();
+    } catch (error) {
+      if (builtInEditorFeedback) {
+        builtInEditorFeedback.textContent = error.message || 'Failed to update built-in command';
+        builtInEditorFeedback.style.color = '#b42318';
+      }
+    } finally {
+      setButtonLoading(builtInEditorSaveBtn, false);
+    }
+  });
+}
+
+applyBuiltInCommandSettingsUI();
+
 if (commandPreviewModal) {
   commandPreviewModal.addEventListener('click', (event) => {
     if (event.target instanceof HTMLElement && event.target.dataset.closeModal === 'command-preview') {
@@ -3094,6 +3558,16 @@ document.addEventListener('keydown', (event) => {
 
   if (event.key === 'Escape' && commandPreviewModal && !commandPreviewModal.hidden) {
     closeCommandPreviewModal();
+    return;
+  }
+
+  if (event.key === 'Escape' && builtInCommandModal && !builtInCommandModal.hidden) {
+    closeBuiltInCommandModal();
+    return;
+  }
+
+  if (event.key === 'Escape' && customCommandEditModal && !customCommandEditModal.hidden) {
+    closeCustomCommandEditModal();
     return;
   }
 

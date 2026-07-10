@@ -343,7 +343,7 @@ function matchCommand(text) {
 }
 
 function createCommand(payload) {
-  const { trigger, response, description, category, mediaUrl, mediaType, fileName, buttons } = payload;
+  const { trigger, response, mediaUrl, mediaType, fileName, buttons } = payload;
   const cleanResponse = String(response || '').trim();
   const cleanMediaUrl = String(mediaUrl || '').trim();
   const parsedButtons = normalizeButtons(buttons);
@@ -372,8 +372,8 @@ function createCommand(payload) {
   const entry = {
     trigger: cleanTrigger,
     response: cleanResponse,
-    description: String(description || '').trim(),
-    category: normalizeCategory(category),
+    description: '',
+    category: 'General',
     createdAt: new Date().toISOString(),
   };
 
@@ -402,7 +402,7 @@ function updateCommand(trigger, payload) {
   const target = commands.find((item) => item.trigger === key);
   if (!target) throw new Error('Command not found');
 
-  const { response, description, category, mediaUrl, mediaType, fileName, buttons } = payload;
+  const { response, mediaUrl, mediaType, fileName, buttons } = payload;
   const cleanResponse = String(response || '').trim();
   const cleanMediaUrl = String(mediaUrl || '').trim();
   const parsedButtons = normalizeButtons(buttons);
@@ -416,8 +416,6 @@ function updateCommand(trigger, payload) {
   }
 
   target.response = cleanResponse;
-  target.description = String(description || '').trim();
-  target.category = normalizeCategory(category);
 
   if (cleanMediaUrl) {
     const type = String(mediaType || 'image').trim();

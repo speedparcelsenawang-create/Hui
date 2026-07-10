@@ -614,7 +614,6 @@
                 </div>
                 <div class="card-content">
                   <form id="command-form">
-                    <input type="hidden" id="commandOriginalTrigger" value="" />
                     <div class="field">
                       <label for="commandTrigger">Trigger</label>
                       <input id="commandTrigger" name="trigger" placeholder=".hello" required />
@@ -677,26 +676,10 @@
                         <div id="buttonRows" class="button-rows"></div>
                         <p class="hint">Use <strong>Button Setup Guide</strong> for required formats and trigger matching rules.</p>
                       </div>
-
-                      <div class="field-row optional-meta-row" id="commandOptionalMetaRow">
-                        <div class="field">
-                          <label for="commandCategory">Category <span class="muted">(optional)</span></label>
-                          <select id="commandCategory" name="category">
-                            <% commandCategories.forEach((cat) => { %>
-                            <option value="<%= cat %>"><%= cat %></option>
-                            <% }) %>
-                          </select>
-                        </div>
-                        <div class="field">
-                          <label for="commandDescription">Description <span class="muted">(optional)</span></label>
-                          <input id="commandDescription" name="description" placeholder="Short note about this command" />
-                        </div>
-                      </div>
                     </div>
 
                     <div class="form-actions">
                       <button type="submit" class="btn btn-block btn-save-command" id="commandSubmitBtn" disabled>Save Command</button>
-                      <button type="button" class="btn btn-outline btn-block" id="commandCancelBtn" hidden>Cancel Edit</button>
                     </div>
                   </form>
                   <p id="command-feedback" class="feedback"></p>
@@ -719,7 +702,6 @@
                         <tr>
                           <th>Command</th>
                           <th>Source</th>
-                          <th>Category</th>
                           <th>Details</th>
                           <th>Action</th>
                         </tr>
@@ -729,71 +711,63 @@
                         <tr>
                           <td>.sch</td>
                           <td><span class="command-source command-source-built-in">Built-in</span></td>
-                          <td>Schedule</td>
                           <td class="command-detail-cell">
-                            <button type="button" class="command-detail-trigger" data-popover-target="schedule-builtin" aria-label="View details for .schedule">
-                              <svg class="command-detail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                <circle cx="12" cy="12" r="9"></circle>
-                                <path d="M9.1 9a3 3 0 1 1 5.2 2c-.8.8-1.8 1.1-2.3 2.1-.1.2-.2.5-.2.9"></path>
-                                <path d="M12 17h.01"></path>
-                              </svg>
-                              <span class="sr-only">View details</span>
-                            </button>
-                            <div class="command-detail-popover" id="schedule-builtin" hidden>
-                              <p class="command-detail-popover-title">Create schedule from current chat</p>
-                              <p class="command-detail-popover-text">Use <code>.schedule &lt;time&gt; | &lt;message&gt;</code> to create a schedule from the bot chat directly.</p>
-                            </div>
+                            <span class="muted">Editable via modal</span>
                           </td>
-                          <td class="command-action-cell"><span class="muted">Managed by system</span></td>
+                          <td class="command-action-cell">
+                            <button type="button" class="btn btn-ghost btn-sm btn-edit-builtin-command" data-builtin-command="sch">Edit</button>
+                          </td>
                         </tr>
 
                         <tr>
                           <td>.vv</td>
                           <td><span class="command-source command-source-built-in">Built-in</span></td>
-                          <td>Utility</td>
                           <td class="command-detail-cell">
-                            <button type="button" class="command-detail-trigger" data-popover-target="vv-builtin" aria-label="View details for .vv">
-                              <svg class="command-detail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                <circle cx="12" cy="12" r="9"></circle>
-                                <path d="M9.1 9a3 3 0 1 1 5.2 2c-.8.8-1.8 1.1-2.3 2.1-.1.2-.2.5-.2.9"></path>
-                                <path d="M12 17h.01"></path>
-                              </svg>
-                              <span class="sr-only">View details</span>
-                            </button>
-                            <div class="command-detail-popover" id="vv-builtin" hidden>
-                              <p class="command-detail-popover-title">View once recovery</p>
-                              <p class="command-detail-popover-text">Reply to a view-once image or video with <code>.vv</code> to reopen it.</p>
-                            </div>
+                            <span class="muted">Editable via modal</span>
                           </td>
-                          <td class="command-action-cell"><span class="muted">Managed by system</span></td>
+                          <td class="command-action-cell">
+                            <button type="button" class="btn btn-ghost btn-sm btn-edit-builtin-command" data-builtin-command="vv">Edit</button>
+                          </td>
                         </tr>
 
                         <tr>
                           <td>.sticker</td>
                           <td><span class="command-source command-source-built-in">Built-in</span></td>
-                          <td>Media</td>
                           <td class="command-detail-cell">
-                            <button type="button" class="command-detail-trigger" data-popover-target="sticker-builtin" aria-label="View details for .sticker">
-                              <svg class="command-detail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                <circle cx="12" cy="12" r="9"></circle>
-                                <path d="M9.1 9a3 3 0 1 1 5.2 2c-.8.8-1.8 1.1-2.3 2.1-.1.2-.2.5-.2.9"></path>
-                                <path d="M12 17h.01"></path>
-                              </svg>
-                              <span class="sr-only">View details</span>
-                            </button>
-                            <div class="command-detail-popover" id="sticker-builtin" hidden>
-                              <p class="command-detail-popover-title">Sticker creator</p>
-                              <p class="command-detail-popover-text">Reply to an image, video, or sticker then send <code>.sticker</code> to create a sticker.</p>
-                            </div>
+                            <span class="muted">Editable via modal</span>
                           </td>
-                          <td class="command-action-cell"><span class="muted">Managed by system</span></td>
+                          <td class="command-action-cell">
+                            <button type="button" class="btn btn-ghost btn-sm btn-edit-builtin-command" data-builtin-command="sticker">Edit</button>
+                          </td>
+                        </tr>
+
+                        <tr>
+                          <td>.schlist</td>
+                          <td><span class="command-source command-source-built-in">Built-in</span></td>
+                          <td class="command-detail-cell">
+                            <span class="muted">Editable via modal</span>
+                          </td>
+                          <td class="command-action-cell">
+                            <button type="button" class="btn btn-ghost btn-sm btn-edit-builtin-command" data-builtin-command="schlist">Edit</button>
+                          </td>
+                        </tr>
+
+                        <tr>
+                          <td>.schdel</td>
+                          <td><span class="command-source command-source-built-in">Built-in</span></td>
+                          <td class="command-detail-cell">
+                            <span class="muted">Editable via modal</span>
+                          </td>
+                          <td class="command-action-cell">
+                            <button type="button" class="btn btn-ghost btn-sm btn-edit-builtin-command" data-builtin-command="schdel">Edit</button>
+                          </td>
                         </tr>
 
                         <% const filteredCustomCommands = customCommands.filter((item) => !builtInCommandTriggers.has(String(item.trigger || '').trim().toLowerCase())); %>
 
                         <% if (!filteredCustomCommands.length) { %>
                         <tr>
-                          <td colspan="5" class="muted">No custom commands yet (built-in commands are listed above)</td>
+                          <td colspan="4" class="muted">No custom commands yet (built-in commands are listed above)</td>
                         </tr>
                         <% } %>
 
@@ -802,7 +776,6 @@
                         <tr data-trigger="<%= item.trigger %>">
                           <td><%= item.trigger %></td>
                           <td><span class="command-source command-source-custom">Custom</span></td>
-                          <td><%= item.category %></td>
                           <td class="command-detail-cell command-content-cell">
                             <button type="button" class="command-detail-trigger" data-popover-target="<%= popoverId %>" aria-label="View details for <%= item.trigger %>">
                               <svg class="command-detail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -822,7 +795,7 @@
                             </div>
                           </td>
                           <td class="command-action-cell">
-                            <button class="btn btn-ghost btn-sm btn-edit-command" data-trigger="<%= item.trigger %>">Edit</button>
+                            <button class="btn btn-ghost btn-sm btn-edit-command-modal" data-trigger="<%= item.trigger %>">Edit</button>
                             <button class="btn btn-ghost btn-sm btn-delete-command" data-trigger="<%= item.trigger %>">Delete</button>
                           </td>
                         </tr>
@@ -1034,6 +1007,87 @@
       </div>
     </div>
 
+    <div class="modal" id="builtInCommandModal" hidden>
+      <div class="modal-backdrop" data-close-modal="builtin-command"></div>
+      <div class="modal-panel schedule-view-modal-panel" role="dialog" aria-modal="true" aria-labelledby="builtInEditorTitle">
+        <button type="button" class="modal-close" id="closeBuiltInCommandModal" aria-label="Close built-in editor">&times;</button>
+        <article class="card schedule-detail-card">
+          <header class="card-header schedule-detail-header">
+            <h3 class="card-title" id="builtInEditorTitle">Edit Built-in Command</h3>
+            <p class="card-description" id="builtInEditorDescription">Update built-in command text and behavior.</p>
+          </header>
+          <div class="card-content schedule-detail-body">
+            <div class="command-detail-popover-editor command-editor-modal-body">
+              <div id="builtInEditorButtonsSection" hidden>
+                <div class="command-detail-popover-actions command-detail-popover-inline-actions">
+                  <button type="button" class="btn btn-ghost btn-sm" id="builtInEditorAddButtonBtn">Add Button</button>
+                </div>
+                <div id="builtInEditorButtonRows"></div>
+              </div>
+              <label for="builtInEditorText" id="builtInEditorTextLabel">Response text</label>
+              <textarea id="builtInEditorText" rows="8"></textarea>
+              <p class="feedback" id="builtInEditorFeedback"></p>
+            </div>
+          </div>
+          <footer class="schedule-modal-actions schedule-detail-footer">
+            <button type="button" class="btn btn-outline" id="builtInEditorCancelBtn">Cancel</button>
+            <button type="button" class="btn btn-outline" id="builtInEditorSaveBtn">Save</button>
+          </footer>
+        </article>
+      </div>
+    </div>
+
+    <div class="modal" id="customCommandEditModal" hidden>
+      <div class="modal-backdrop" data-close-modal="custom-command-edit"></div>
+      <div class="modal-panel schedule-view-modal-panel" role="dialog" aria-modal="true" aria-labelledby="customCommandEditorTitle">
+        <button type="button" class="modal-close" id="closeCustomCommandEditModal" aria-label="Close custom command editor">&times;</button>
+        <article class="card schedule-detail-card">
+          <header class="card-header schedule-detail-header">
+            <h3 class="card-title" id="customCommandEditorTitle">Edit Custom Command</h3>
+            <p class="card-description" id="customCommandEditorDescription">Edit response, media, and buttons for this custom command.</p>
+          </header>
+          <div class="card-content schedule-detail-body">
+            <input type="hidden" id="customCommandEditOriginalTrigger" />
+            <div class="command-detail-popover-editor command-editor-modal-body">
+              <label for="customCommandEditTrigger">Trigger</label>
+              <input id="customCommandEditTrigger" type="text" readonly />
+
+              <label for="customCommandEditMediaType">Media Type</label>
+              <select id="customCommandEditMediaType">
+                <option value="none">No media</option>
+                <% mediaTypes.forEach((type) => { %>
+                <option value="<%= type %>"><%= type %></option>
+                <% }) %>
+              </select>
+
+              <label for="customCommandEditMediaUrl">Media URL <span class="muted">(optional)</span></label>
+              <input id="customCommandEditMediaUrl" type="text" placeholder="https://..." />
+
+              <label for="customCommandEditFileName">File Name <span class="muted">(document only, optional)</span></label>
+              <input id="customCommandEditFileName" type="text" placeholder="brochure.pdf" />
+
+              <label for="customCommandEditResponse">Response Text</label>
+              <textarea id="customCommandEditResponse" rows="4" placeholder="Reply message..."></textarea>
+
+              <div class="field-head">
+                <label>Interactive Buttons <span class="muted">(optional)</span></label>
+                <div class="field-head-actions">
+                  <button type="button" class="btn btn-outline btn-sm" id="customCommandEditAddButtonBtn">Add Button</button>
+                </div>
+              </div>
+              <div id="customCommandEditButtonRows" class="button-rows"></div>
+
+              <p class="feedback" id="customCommandEditFeedback"></p>
+            </div>
+          </div>
+          <footer class="schedule-modal-actions schedule-detail-footer">
+            <button type="button" class="btn btn-outline" id="customCommandEditCancelBtn">Cancel</button>
+            <button type="button" class="btn btn-outline" id="customCommandEditSaveBtn">Save</button>
+          </footer>
+        </article>
+      </div>
+    </div>
+
     <div class="modal" id="buttonSetupGuideModal" hidden>
       <div class="modal-backdrop" data-close-modal="button-setup-guide"></div>
       <div class="modal-panel button-setup-guide-modal-panel" role="dialog" aria-modal="true" aria-labelledby="buttonSetupGuideModalTitle">
@@ -1060,6 +1114,7 @@
       window.__CUSTOM_COMMANDS__ = <%- JSON.stringify(customCommands) %>;
       window.__CHAT_RESPONSE_SETTINGS__ = <%- JSON.stringify(chatResponseSettings) %>;
       window.__ACCESS_CONTROL_SETTINGS__ = <%- JSON.stringify(accessControlSettings) %>;
+      window.__BUILT_IN_COMMAND_SETTINGS__ = <%- JSON.stringify(builtInCommandSettings) %>;
     </script>
     <script src="/public/app.js"></script>
   </body>
