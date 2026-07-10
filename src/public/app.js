@@ -98,8 +98,6 @@ const accountChatStateSelfCommand = document.getElementById('accountChatStateSel
 const profileHomeName = document.getElementById('profileHomeName');
 const profileHomeSubtitle = document.getElementById('profileHomeSubtitle');
 const profileHomeConnectionBadge = document.getElementById('profileHomeConnectionBadge');
-const profileHomeConnectedText = document.getElementById('profileHomeConnectedText');
-const profileHomeConnectedLabel = document.getElementById('profileHomeConnectedLabel');
 const profileHomeSummaryName = document.getElementById('profileHomeSummaryName');
 const profileHomeSummaryPhone = document.getElementById('profileHomeSummaryPhone');
 const profileHomeSummaryJid = document.getElementById('profileHomeSummaryJid');
@@ -1053,17 +1051,11 @@ function renderWhatsAppState(state) {
   }
 
   if (profileHomeConnectionBadge) {
-    profileHomeConnectionBadge.textContent = isReady ? 'Online' : 'Offline';
-    profileHomeConnectionBadge.classList.remove('badge-success', 'badge-warning');
-    profileHomeConnectionBadge.classList.add(isReady ? 'badge-success' : 'badge-warning');
-  }
-
-  if (profileHomeConnectedText) {
-    profileHomeConnectedText.classList.toggle('is-offline', !isReady);
-  }
-
-  if (profileHomeConnectedLabel) {
-    profileHomeConnectedLabel.textContent = isReady ? 'Connected' : 'Not connected';
+    const statusSpan = profileHomeConnectionBadge.querySelector('span');
+    if (statusSpan) {
+      statusSpan.textContent = isReady ? 'Online' : 'Offline';
+      profileHomeConnectionBadge.classList.toggle('is-offline', !isReady);
+    }
   }
 
   const avatarName = connectedNameText && connectedNameText !== '-'

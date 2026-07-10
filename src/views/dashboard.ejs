@@ -133,11 +133,9 @@
                   <div class="profile-home-meta">
                     <p class="profile-home-name" id="profileHomeName"><%= waState.connectedAccount?.displayName || 'ScheduleBot Admin' %></p>
                     <p class="profile-home-subtitle" id="profileHomeSubtitle"><%= waState.connectedAccount?.about || 'Manage your bot profile, account settings, and command behavior.' %></p>
-                    <p class="profile-home-connected" id="profileHomeConnectedText">
-                      <span class="profile-home-connected-icon" id="profileHomeConnectedIcon">✓</span>
-                      <span id="profileHomeConnectedLabel"><%= waState.ready ? 'Connected' : 'Not connected' %></span>
-                    </p>
-                    <span class="badge <%= waState.ready ? 'badge-success' : 'badge-warning' %>" id="profileHomeConnectionBadge"><%= waState.ready ? 'Online' : 'Offline' %></span>
+                    <span class="profile-status-indicator" id="profileHomeConnectionBadge">
+                      <span><%= waState.ready ? 'Online' : 'Offline' %></span>
+                    </span>
                   </div>
                 </div>
               </article>
@@ -341,15 +339,27 @@
                     </div>
 
                     <div class="method-tabs linked-method-tabs">
-                      <button type="button" class="method-tab active" id="methodTabQr" data-method="qr">QR Code</button>
-                      <button type="button" class="method-tab" id="methodTabPhone" data-method="phone" <%= waState.ready ? 'disabled' : '' %>>Phone Number</button>
+                      <button type="button" class="method-tab active" id="methodTabQr" data-method="qr">
+                        <svg style="width: 16px; height: 16px; margin-right: 6px; display: inline; vertical-align: -2px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>QR Code
+                      </button>
+                      <button type="button" class="method-tab" id="methodTabPhone" data-method="phone" <%= waState.ready ? 'disabled' : '' %>>
+                        <svg style="width: 16px; height: 16px; margin-right: 6px; display: inline; vertical-align: -2px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"></rect><rect x="2" y="4" width="20" height="12" rx="2"></rect><path d="M2 16h20"></path></svg>Phone Number
+                      </button>
                     </div>
 
                     <div id="qr-method" class="method-panel linked-method-panel">
                       <div id="wa-connected-wrap" class="connected-wrap linked-connected-wrap" <%= waState.ready ? '' : 'hidden' %>>
                         <span class="connected-icon" aria-hidden="true">✓</span>
-                        <p class="connected-title">WhatsApp connected</p>
-                        <p class="connected-subtitle">Session is active. QR code is not needed right now.</p>
+                        <div style="text-align: center;">
+                          <p class="connected-title">WhatsApp connected</p>
+                          <p class="connected-subtitle">Your session is active and secure</p>
+                        </div>
+                        <div style="display: flex; gap: 6px; margin-top: 4px;">
+                          <span class="badge badge-success" style="display: inline-flex; align-items: center; gap: 4px;">
+                            <span style="width: 6px; height: 6px; background: currentColor; border-radius: 50%; display: inline-block;"></span>
+                            Active
+                          </span>
+                        </div>
                         <div class="connected-details" id="waConnectedDetails" <%= waState.ready ? '' : 'hidden' %>>
                           <p class="connected-detail-row">
                             <span class="connected-detail-label">Name</span>
@@ -374,8 +384,10 @@
                         <% } %>
                         <div id="wa-qr-connected-banner" class="qr-connected-banner" <%= waState.ready ? '' : 'hidden' %>>
                           <span class="connected-icon" aria-hidden="true">✓</span>
-                          <p class="connected-title">WhatsApp connected</p>
-                          <p class="connected-subtitle">Session is active. QR code is not needed right now.</p>
+                          <div>
+                            <p class="connected-title">WhatsApp connected</p>
+                            <p class="connected-subtitle">Your session is active and secure</p>
+                          </div>
                         </div>
                         <p id="wa-qr-caption" class="qr-caption"><%= waState.ready ? 'WhatsApp already connected. QR scan is not required.' : 'Scan this QR code from WhatsApp to connect the bot.' %></p>
                         <ol id="wa-qr-instructions" class="qr-instructions" <%= waState.ready ? 'hidden' : '' %>>
